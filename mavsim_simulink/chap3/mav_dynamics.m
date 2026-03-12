@@ -46,7 +46,7 @@ switch flag
 
 end
 
-% end sfuntmpl
+end
 
 %
 %=============================================================================
@@ -111,7 +111,7 @@ ts  = [0 0];
 %    'DisallowSimState' < Error out when saving or restoring the model sim state
 simStateCompliance = 'UnknownSimState';
 
-% end mdlInitializeSizes
+end
 
 %
 %=============================================================================
@@ -120,6 +120,12 @@ simStateCompliance = 'UnknownSimState';
 %=============================================================================
 %
 function sys=mdlDerivatives(t,x,uu, MAV)
+
+    mass = MAV.mass;
+    I_xx = MAV.I_xx;
+    I_yy = MAV.I_yy;
+    I_zz = MAV.I_zz;
+    I_xz = MAV.I_xz;
 
     pn    = x(1);
     pe    = x(2);
@@ -140,33 +146,54 @@ function sys=mdlDerivatives(t,x,uu, MAV)
     ell   = uu(4);
     m     = uu(5);
     n     = uu(6);
+
+    R = [ e1^2+e0^2-e2^2-e3^2 , 2*(e1*e2 - e0*e3) , 2*(e1*e3 + e0*e2);
+      2*(e1*e2 + e0*e3) , e2^2+e0^2-e1^2-e3^2 , 2*(e2*e3 - e0*e1);
+      2*(e1*e3 - e0*e2) , 2*(e2*e3 + e0*e1) , e3^2+e0^2-e1^2-e2^2 ];
+
+    posdot = R * [u; v; w];
+
+    pndot = posdot(1);
+    pedot = posdot(2);
+    pddot = posdot(3);
     
-    pndot = 
-    
-    pedot = 
-    
-    pddot = 
-    
-    udot = 
-    
-    vdot = 
-    
-    wdot = 
+    udot = r*v - q*w + fx/mass;
+    vdot = p*w - r*u + fy/mass;
+    wdot = q*u - p*v + fz/mass;
        
-    e0dot = 
-    e1dot = 
-    e2dot = 
-    e3dot = 
+    Omega = [ 0   -p   -q   -r;
+          p    0    r   -q;
+          q   -r    0    p;
+          r    q   -p    0 ];
+
+    quat_dot = 0.5 * Omega * [e0; e1; e2; e3];
+
+    e0dot = quat_dot(1);
+    e1dot = quat_dot(2);
+    e2dot = quat_dot(3);
+    e3dot = quat_dot(4);
+
+    Gamma  = I_xx*I_zz - I_xz^2;
+
+    Gamma1 = (I_xz*(I_xx - I_yy + I_zz))/Gamma;
+    Gamma2 = (I_zz*(I_zz - I_yy) + I_xz^2)/Gamma;
+    Gamma3 = I_zz/Gamma;
+    Gamma4 = I_xz/Gamma;
+    Gamma5 = (I_zz - I_xx)/I_yy;
+    Gamma6 = I_xz/I_yy;
+    Gamma7 = ((I_xx - I_yy)*I_xx + I_xz^2)/Gamma;
+    Gamma8 = I_xx/Gamma;
         
-    pdot = 
-    
-    qdot = 
-    rdot =
+    pdot = Gamma1*p*q - Gamma2*q*r + Gamma3*ell + Gamma4*n;
+
+    qdot = Gamma5*p*r - Gamma6*(p^2 - r^2) + m/I_yy;
+
+    rdot = Gamma7*p*q - Gamma1*q*r + Gamma4*ell + Gamma8*n;
         
 
 sys = [pndot; pedot; pddot; udot; vdot; wdot; e0dot; e1dot; e2dot; e3dot; pdot; qdot; rdot];
 
-% end mdlDerivatives
+end
 
 %
 %=============================================================================
@@ -179,7 +206,7 @@ function sys=mdlUpdate(t,x,u)
 
 sys = [];
 
-% end mdlUpdate
+end
 
 %
 %=============================================================================
@@ -192,7 +219,7 @@ function sys=mdlOutputs(t,x)
         ];
 sys = y;
 
-% end mdlOutputs
+end
 
 %
 %=============================================================================
@@ -208,7 +235,7 @@ function sys=mdlGetTimeOfNextVarHit(t,x,u)
 sampleTime = 1;    %  Example, set the next hit to be one second later.
 sys = t + sampleTime;
 
-% end mdlGetTimeOfNextVarHit
+end
 
 %
 %=============================================================================
@@ -220,4 +247,4 @@ function sys=mdlTerminate(t,x,u)
 
 sys = [];
 
-% end mdlTerminate
+end

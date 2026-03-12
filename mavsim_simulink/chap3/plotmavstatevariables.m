@@ -1,4 +1,5 @@
-function plotMAVStateVariables(uu)
+%function plotMAVStateVariables(uu)
+function plotmavstatevariables(uu)
 %
 % modified 12/11/2009 - RB
 
@@ -61,6 +62,7 @@ function plotMAVStateVariables(uu)
     % compute course angle
     chi = 180/pi*atan2(Va*sin(psi)+we, Va*cos(psi)+wn);
 
+
     % define persistent variables 
     persistent pn_handle
     persistent pe_handle
@@ -81,7 +83,9 @@ function plotMAVStateVariables(uu)
     
 
   % first time function is called, initialize plot and persistent vars
-    if t==0,
+    %if t==0,
+    if isempty(pn_handle)
+
         figure(2), clf
 
         subplot(8,2,1)
