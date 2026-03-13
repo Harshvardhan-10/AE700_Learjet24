@@ -1,5 +1,5 @@
-%function plotMAVStateVariables(uu)
-function plotmavstatevariables(uu)
+function plotMAVStateVariables(uu)
+
 %
 % modified 12/11/2009 - RB
 
@@ -182,7 +182,7 @@ function plotmavstatevariables(uu)
 % graph y with lable mylabel
 function handle = graph_y(t, y, handle, color)
   
-  if isempty(handle),
+  if isempty(handle)
     handle    = plot(t,y,color);
   else
     set(handle,'Xdata',[get(handle,'Xdata'),t]);
@@ -194,7 +194,7 @@ function handle = graph_y(t, y, handle, color)
 % graph y and yd with lable mylabel
 function handle = graph_y_yd(t, y, yd, lab, handle)
   
-  if isempty(handle),
+  if isempty(handle)
     handle(1)    = plot(t,y,'b');
     handle(2)    = plot(t,yd,'g--');
     ylabel(lab)
@@ -215,7 +215,7 @@ function handle = graph_y_yd(t, y, yd, lab, handle)
 % desired value yd in red, lab is the label on the graph
 function handle = graph_y_yhat_yd(t, y, yhat, yd, lab, handle)
   
-  if isempty(handle),
+  if isempty(handle)
     handle(1)   = plot(t,y,'b');
     handle(2)   = plot(t,yhat,'g--');
     handle(3)   = plot(t,yd,'r-.');
@@ -239,9 +239,9 @@ function handle = graph_y_yhat_yd(t, y, yhat, yd, lab, handle)
 %
 function out=sat(in, low, high)
 
-  if in < low,
+  if in < low
       out = low;
-  elseif in > high,
+  elseif in > high
       out = high;
   else
       out = in;
