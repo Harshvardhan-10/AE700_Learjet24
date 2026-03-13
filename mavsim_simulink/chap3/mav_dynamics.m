@@ -122,10 +122,10 @@ end
 function sys=mdlDerivatives(t,x,uu, MAV)
 
     mass = MAV.mass;
-    I_xx = MAV.I_xx;
-    I_yy = MAV.I_yy;
-    I_zz = MAV.I_zz;
-    I_xz = MAV.I_xz;
+    I_xx = MAV.Jx;
+    I_yy = MAV.Jy;
+    I_zz = MAV.Jz;
+    I_xz = MAV.Jxz;
 
     pn    = x(1);
     pe    = x(2);
@@ -147,9 +147,7 @@ function sys=mdlDerivatives(t,x,uu, MAV)
     m     = uu(5);
     n     = uu(6);
 
-    R = [ e1^2+e0^2-e2^2-e3^2 , 2*(e1*e2 - e0*e3) , 2*(e1*e3 + e0*e2);
-      2*(e1*e2 + e0*e3) , e2^2+e0^2-e1^2-e3^2 , 2*(e2*e3 - e0*e1);
-      2*(e1*e3 - e0*e2) , 2*(e2*e3 + e0*e1) , e3^2+e0^2-e1^2-e2^2 ];
+    R = Quaternion2Rotation([e0; e1; e2; e3]);
 
     posdot = R * [u; v; w];
 
@@ -215,9 +213,25 @@ end
 %=============================================================================
 %
 function sys=mdlOutputs(t,x)
-    y = [...
-        ];
-sys = y;
+    pn = x(1);
+    pe = x(2);
+    pd = x(3);
+    u  = x(4);
+    v  = x(5);
+    w  = x(6);
+    e0 = x(7);
+    e1 = x(8);
+    e2 = x(9);
+    e3 = x(10);
+    p  = x(11);
+    q  = x(12);
+    r  = x(13);
+
+    % Use Quaternion2Euler from tools/ folder
+    [phi, theta, psi] = Quaternion2Euler([e0; e1; e2; e3]);
+
+    y = [pn; pe; pd; u; v; w; phi; theta; psi; p; q; r];
+    sys = y;
 
 end
 
