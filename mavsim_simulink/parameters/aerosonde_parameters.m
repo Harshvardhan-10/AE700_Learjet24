@@ -19,7 +19,7 @@ fts2ms         = ft2m;            % 1 ft/s      = 0.3048 m/s
 %% ---- Initial conditions ------------------------------------------------
 MAV.pn0    = 0;                          % North position      [m]
 MAV.pe0    = 0;                          % East  position      [m]
-MAV.pd0    = 0*-1000  * ft2m;              % Down  position      [m]  (1000 ft altitude)
+MAV.pd0    = -1000  * ft2m;              % Down  position      [m]  (1000 ft altitude)
 MAV.u0     =   250  * fts2ms;            % body x-velocity     [m/s]  (~76.2 m/s ≈ 148 kt)
 MAV.v0     = 0;                          % body y-velocity     [m/s]
 MAV.w0     = 0;                          % body z-velocity     [m/s]
