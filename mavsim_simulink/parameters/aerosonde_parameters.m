@@ -1,119 +1,139 @@
 % learjet24_parameters.m
-% Parameters for the Learjet 24 (max weight cruise configuration)
-% Source: Roskam, J., Airplane Flight Dynamics and Automatic Flight Controls, 1995
-% Units      : ALL quantities stored in SI (m, kg, N, rad, kg·m²)
-%              Values shown as  <dat-file value> * <conversion factor>
-%              so every number is traceable back to aircraft.dat
+%   Aircraft parameters for the Learjet 24 (max weight cruise configuration)
+%   All values converted to SI units.
+%
+%   Source: Roskam, Airplane Flight Dynamics and Automatic Flight Controls,
+%           Part I, DARcorporation, 1995, pp.522-524  (via aircraft.dat)
+%
+%   Convention: aerosonde field names (MAV.xxx) to match mav_dynamics.m
+%               and the mavsim_simulink template code.
 
 addpath('../tools');
 
-%% ---- Unit conversion factors -------------------------------------------
-ft2m           = 0.3048;          % 1 ft        = 0.3048 m
-ft2_2_m2       = ft2m^2;          % 1 ft²       = 0.0929 m²
-ft3_2_m3       = ft2m^3;          % 1 ft³       = 0.0283 m³
-slugft2_2_kgm2 = 1.35582;         % 1 slug·ft²  = 1.35582 kg·m²
-slug2kg        = 14.5939;         % 1 slug      = 14.5939 kg
-lb2N           = 4.44822;         % 1 lbf       = 4.44822 N
-fts2ms         = ft2m;            % 1 ft/s      = 0.3048 m/s
+% -----------------------------------------------------------------------
+% Unit conversion factors
+% -----------------------------------------------------------------------
+ft2m           = 0.3048;
+ft2_2_m2       = ft2m^2;
+slugft2_2_kgm2 = 1.35582;
+lb2N           = 4.44822;
 
-%% ---- Initial conditions ------------------------------------------------
-MAV.pn0    = 0;                          % North position      [m]
-MAV.pe0    = 0;                          % East  position      [m]
-MAV.pd0    = -1000  * ft2m;              % Down  position      [m]  (1000 ft altitude)
-MAV.u0     =   250  * fts2ms;            % body x-velocity     [m/s]  (~76.2 m/s ≈ 148 kt)
-MAV.v0     = 0;                          % body y-velocity     [m/s]
-MAV.w0     = 0;                          % body z-velocity     [m/s]
-MAV.phi0   = 0;                          % roll                [rad]
-MAV.theta0 = 0.08;                       % pitch               [rad]  (~4.6°, approx trim)
-MAV.psi0   = 0;                          % yaw                 [rad]
+% -----------------------------------------------------------------------
+% Initial conditions
+% -----------------------------------------------------------------------
+MAV.pn0    =    0;      % initial North position [m]
+MAV.pe0    =    0;      % initial East position  [m]
+MAV.pd0    = -100;      % initial Down position  [m]  (100 m altitude)
+MAV.u0     =   80;      % initial body-x velocity [m/s]  (~155 kt cruise)
+MAV.v0     =    0;
+MAV.w0     =    0;
+MAV.phi0   =    0;      % initial roll  [rad]
+MAV.theta0 =    0;      % initial pitch [rad]
+MAV.psi0   =    0;      % initial yaw   [rad]
 
-% Convert Euler angles to quaternion for the s-function
 e = Euler2Quaternion(MAV.phi0, MAV.theta0, MAV.psi0);
 MAV.e0 = e(1);
 MAV.e1 = e(2);
 MAV.e2 = e(3);
 MAV.e3 = e(4);
 
-MAV.p0 = 0;                              % roll  rate          [rad/s]
-MAV.q0 = 0;                              % pitch rate          [rad/s]
-MAV.r0 = 0;                              % yaw   rate          [rad/s]
+MAV.p0 = 0;
+MAV.q0 = 0;
+MAV.r0 = 0;
 
-%% ---- Physical parameters -----------------------------------------------
-MAV.gravity = 9.81;                      % [m/s²]
+% -----------------------------------------------------------------------
+% Physical parameters
+% -----------------------------------------------------------------------
+MAV.gravity = 9.81;                              % [m/s^2]
 
-% dat file: Weight = 13000 lb  →  mass = W/g
-% Convert weight to Newtons first, then divide by SI gravity
-MAV.mass = (13000 * lb2N) / MAV.gravity; % [kg]
+% Mass:  13000 lb -> kg
+MAV.mass  = 13000 * lb2N / MAV.gravity;         % = 5897.0 kg
 
-% Moments of inertia  (dat file units: slug·ft²)
-MAV.Jx  = 28000 * slugft2_2_kgm2;       % [kg·m²]   I_xx = 28000 slug·ft²
-MAV.Jy  = 18800 * slugft2_2_kgm2;       % [kg·m²]   I_yy = 18800 slug·ft²
-MAV.Jz  = 47000 * slugft2_2_kgm2;       % [kg·m²]   I_zz = 47000 slug·ft²
-MAV.Jxz =  1300 * slugft2_2_kgm2;       % [kg·m²]   I_xz =  1300 slug·ft²
+% Moments of inertia:  slug-ft^2 -> kg-m^2
+MAV.Jx  = 28000 * slugft2_2_kgm2;              % = 37962.96 kg-m^2
+MAV.Jy  = 18800 * slugft2_2_kgm2;              % = 25489.42 kg-m^2
+MAV.Jz  = 47000 * slugft2_2_kgm2;              % = 63723.54 kg-m^2
+MAV.Jxz =  1300 * slugft2_2_kgm2;              % =  1762.57 kg-m^2
 
-%% ---- Wing geometry  (dat file units: ft and ft²) -----------------------
-MAV.S_wing = 230.0 * ft2_2_m2;          % [m²]   Sw   = 230  ft²
-MAV.b      =  34.0 * ft2m;              % [m]    bw   = 34   ft
-MAV.c      =   7.0 * ft2m;              % [m]    cbar = 7    ft
-MAV.AR     = MAV.b^2 / MAV.S_wing;      % [-]    aspect ratio (≈ 5.02, unit-invariant)
+% Derived Gamma parameters (used in mav_dynamics.m)
+MAV.Gamma  = MAV.Jx*MAV.Jz - MAV.Jxz^2;
+MAV.Gamma1 = (MAV.Jxz*(MAV.Jx - MAV.Jy + MAV.Jz)) / MAV.Gamma;
+MAV.Gamma2 = (MAV.Jz*(MAV.Jz - MAV.Jy) + MAV.Jxz^2) / MAV.Gamma;
+MAV.Gamma3 = MAV.Jz  / MAV.Gamma;
+MAV.Gamma4 = MAV.Jxz / MAV.Gamma;
+MAV.Gamma5 = (MAV.Jz - MAV.Jx) / MAV.Jy;
+MAV.Gamma6 = MAV.Jxz / MAV.Jy;
+MAV.Gamma7 = ((MAV.Jx - MAV.Jy)*MAV.Jx + MAV.Jxz^2) / MAV.Gamma;
+MAV.Gamma8 = MAV.Jx  / MAV.Gamma;
 
-%% ---- Atmosphere  (sea-level standard for initial testing) --------------
-% dat file: rho not listed; aerosonde used 0.002377 slug/ft³ (SL standard)
-% 0.002377 slug/ft³  ×  (14.5939 kg/slug)  /  (0.3048 m/ft)³  =  1.225 kg/m³
-MAV.rho = 0.002377 * (slug2kg / ft3_2_m3);   % [kg/m³]  sea-level standard
-% For cruise at ~25,000 ft: use MAV.rho = 0.549  [kg/m³]
+% -----------------------------------------------------------------------
+% Wing geometry:  ft -> m,  ft^2 -> m^2
+% -----------------------------------------------------------------------
+MAV.b      = 34.0  * ft2m;                      % wing span   [m]
+MAV.c      =  7.0  * ft2m;                      % mean chord  [m]
+MAV.S_wing = 230.0 * ft2_2_m2;                  % wing area   [m^2]
+MAV.AR     = MAV.b^2 / MAV.S_wing;              % aspect ratio
 
-%% ---- Engine  (dat file: simpleSingle 2950 lb) --------------------------
-MAV.T_max = 2950 * lb2N;                % [N]
+% -----------------------------------------------------------------------
+% Atmosphere (ISA sea level)
+% -----------------------------------------------------------------------
+MAV.rho = 1.225;                                 % air density [kg/m^3]
 
-%% ---- Aerodynamic coefficients ------------------------------------------
-% All aero coefficients are dimensionless or per-radian.
-% NO unit conversion is needed — they are copied directly from aircraft.dat.
+% -----------------------------------------------------------------------
+% Propulsion
+%   aircraft.dat: simpleSingle 2950 lb (one engine)
+%   Learjet 24 has TWO engines -> total static thrust = 2 x 2950 lb
+% -----------------------------------------------------------------------
+MAV.T_max = 2 * 2950 * lb2N;                    % = 26241 N total thrust
 
-% --- Lift ---
-MAV.C_L_0         =  0.130;             % [-]        CLo
-MAV.C_L_alpha     =  5.840;             % [/rad]     CL_a
-MAV.C_L_q         =  4.7;               % [/rad]     CL_q
-MAV.C_L_alpha_dot =  2.2;               % [/rad]     CL_adot
-MAV.C_L_delta_e   =  0.46;              % [/rad]     CL_de
+% -----------------------------------------------------------------------
+% Aerodynamic coefficients (all /rad, dimensionless — no conversion needed)
+% -----------------------------------------------------------------------
 
-% --- Drag ---
-MAV.C_D_0         =  0.0216;            % [-]        CDo
-MAV.C_D_alpha     =  0.300;             % [/rad]     CD_a
-MAV.C_D_delta_e   =  0.0;               % [/rad]     CD_de
-% CDK not listed in dat file; standard estimate: 1/(pi * e * AR), assume e = 0.8
-MAV.e_oswald      =  0.80;              % [-]        Oswald efficiency (assumed)
-MAV.C_D_K         =  1 / (pi * MAV.e_oswald * MAV.AR);   % [-]
+% Lift
+MAV.CL_0     =  0.130;
+MAV.CL_alpha =  5.840;
+MAV.CL_adot  =  2.2;
+MAV.CL_q     =  4.7;
+MAV.CL_de    =  0.46;
 
-% --- Pitching moment ---
-MAV.C_m_0         =  0.05;              % [-]        Cmo
-MAV.C_m_alpha     = -0.64;              % [/rad]     Cm_a
-MAV.C_m_q         = -15.5;              % [/rad]     Cm_q
-MAV.C_m_alpha_dot = -6.7;               % [/rad]     Cm_adot
-MAV.C_m_delta_e   = -1.24;              % [/rad]     Cm_de
+% Drag
+MAV.CD_0     =  0.0216;
+MAV.CD_alpha =  0.300;
+MAV.CD_de    =  0.0;
 
-% --- Side force ---
-MAV.C_Y_beta      = -0.730;             % [/rad]     CY_beta
-MAV.C_Y_p         =  0.0;               % [/rad]     CY_p
-MAV.C_Y_r         =  0.400;             % [/rad]     CY_r
-MAV.C_Y_delta_a   =  0.0;               % [/rad]     CY_da  (sign reversed per dat)
-MAV.C_Y_delta_r   =  0.140;             % [/rad]     CY_dr
+% Pitching moment
+MAV.Cm_0     =  0.05;
+MAV.Cm_alpha = -0.64;
+MAV.Cm_adot  = -6.7;
+MAV.Cm_q     = -15.5;
+MAV.Cm_de    = -1.24;
 
-% --- Rolling moment ---
-MAV.C_ell_beta    = -0.110;             % [/rad]     Cl_beta
-MAV.C_ell_p       = -0.450;             % [/rad]     Cl_p
-MAV.C_ell_r       =  0.160;             % [/rad]     Cl_r
-MAV.C_ell_delta_a = -0.178;             % [/rad]     Cl_da  (sign reversed per dat)
-MAV.C_ell_delta_r =  0.019;             % [/rad]     Cl_dr
+% Side force
+MAV.CY_beta  = -0.730;
+MAV.CY_p     =  0.0;
+MAV.CY_r     =  0.400;
+MAV.CY_da    =  0.0;
+MAV.CY_dr    =  0.140;
 
-% --- Yawing moment ---
-MAV.C_n_beta      =  0.127;             % [/rad]     Cn_beta
-MAV.C_n_p         = -0.008;             % [/rad]     Cn_p
-MAV.C_n_r         = -0.200;             % [/rad]     Cn_r
-MAV.C_n_delta_a   =  0.020;             % [/rad]     Cn_da  (sign reversed per dat)
-MAV.C_n_delta_r   = -0.074;             % [/rad]     Cn_dr
+% Rolling moment
+MAV.Cl_beta  = -0.110;
+MAV.Cl_p     = -0.450;
+MAV.Cl_r     =  0.160;
+MAV.Cl_da    = -0.178;
+MAV.Cl_dr    =  0.019;
 
-%% ---- Control surface limits  (dat file: deg) ---------------------------
-MAV.delta_e_max = 20 * (pi/180);        % [rad]   controlSurface de 20 20
-MAV.delta_a_max = 20 * (pi/180);        % [rad]   controlSurface da 20 20
-MAV.delta_r_max = 20 * (pi/180);        % [rad]   controlSurface dr 20 20
+% Yawing moment
+MAV.Cn_beta  =  0.127;
+MAV.Cn_p     = -0.008;
+MAV.Cn_r     = -0.200;
+MAV.Cn_da    =  0.020;
+MAV.Cn_dr    = -0.074;
+
+% Control surface limits [rad]
+MAV.de_max   = 20 * pi/180;
+MAV.da_max   = 20 * pi/180;
+MAV.dr_max   = 20 * pi/180;
+
+% CG vertical offset
+MAV.Dz_cg   = 3.5 * ft2m;                       % [m]
