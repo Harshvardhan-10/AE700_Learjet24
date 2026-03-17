@@ -31,12 +31,6 @@ MAV.phi0   =    0;      % initial roll  [rad]
 MAV.theta0 =    0;      % initial pitch [rad]
 MAV.psi0   =    0;      % initial yaw   [rad]
 
-e = Euler2Quaternion(MAV.phi0, MAV.theta0, MAV.psi0);
-MAV.e0 = e(1);
-MAV.e1 = e(2);
-MAV.e2 = e(3);
-MAV.e3 = e(4);
-
 MAV.p0 = 0;
 MAV.q0 = 0;
 MAV.r0 = 0;
