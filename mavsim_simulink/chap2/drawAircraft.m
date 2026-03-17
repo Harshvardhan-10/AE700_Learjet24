@@ -107,7 +107,7 @@ function XYZ = rotate(XYZ, phi, theta, psi)
                sin(psi),  cos(psi), 0;
                0,              0,   1];
 
-    R = R_roll * R_pitch * R_yaw;
+    R = R_yaw * R_pitch * R_roll;
     XYZ = R * XYZ;
 end
 
