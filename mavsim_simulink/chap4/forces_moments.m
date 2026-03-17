@@ -97,14 +97,21 @@ function out = forces_moments(x, delta, wind, P)
         p_nd = 0;  q_nd = 0;  r_nd = 0;
     end
  
+    if Va > 0.1
+        alphadot = q - (p*cos(alpha) + r*sin(alpha))*tan(beta);
+        alphadot_nd = alphadot * P.c / (2*Va);
+    else
+        alphadot_nd = 0;
+    end
+    
     % ---- Lift coefficient ----
-    CL = P.CL_0 + P.CL_alpha*alpha + P.CL_q*q_nd + P.CL_de*delta_e;
+    CL = P.CL_0 + P.CL_alpha*alpha + P.CL_adot*alphadot_nd + P.CL_q*q_nd + P.CL_de*delta_e;
  
     % ---- Drag coefficient ----
     CD = P.CD_0 + P.CD_alpha*alpha + P.CD_de*delta_e;
  
     % ---- Pitching moment coefficient ----
-    Cm = P.Cm_0 + P.Cm_alpha*alpha + P.Cm_q*q_nd + P.Cm_de*delta_e;
+    Cm = P.Cm_0 + P.Cm_alpha*alpha + P.Cm_adot*alphadot_nd + P.Cm_q*q_nd + P.Cm_de*delta_e;
  
     % ---- Side-force coefficient ----
     CY = P.CY_beta*beta + P.CY_p*p_nd + P.CY_r*r_nd ...
