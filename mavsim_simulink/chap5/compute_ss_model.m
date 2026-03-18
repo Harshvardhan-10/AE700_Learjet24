@@ -15,7 +15,7 @@ addpath('../tools')
 aerosonde_parameters
 load('trim_results.mat')
 
-[A, B, C, D] = linmod('mavsim_trim', x_trim, u_trim);
+[A, B, C, D] = linmod('mavsim_trim_2023b', x_trim, u_trim);
 
 fprintf('linmod sizes: A=%dx%d  B=%dx%d\n', size(A,1),size(A,2),size(B,1),size(B,2));
 % Expected: A=12x12, B=12x4

@@ -12,7 +12,7 @@ function plotMAVStateVariables(uu)
     w           = uu(6);             % body velocity along z-axis (meters/s)
     phi         = 180/pi*uu(7);      % roll angle (degrees)   
     theta       = 180/pi*uu(8);      % pitch angle (degrees)
-    psi         = uu(9);             % yaw angle (degrees)
+    psi         = uu(9);             % yaw angle (radians)
     p           = 180/pi*uu(10);     % body angular rate along x-axis (degrees/s)
     q           = 180/pi*uu(11);     % body angular rate along y-axis (degrees/s)
     r           = 180/pi*uu(12);     % body angular rate along z-axis (degrees/s)
@@ -61,6 +61,7 @@ function plotMAVStateVariables(uu)
     
     % compute course angle
     chi = 180/pi*atan2(Va*sin(psi)+we, Va*cos(psi)+wn);
+    psi = 180/pi*uu(9)
 
 
     % define persistent variables 
@@ -79,7 +80,8 @@ function plotMAVStateVariables(uu)
     persistent delta_e_handle
     persistent delta_a_handle
     persistent delta_r_handle
-    persistent delta_t_handle
+    %persistent delta_t_handle
+    persistent psi_handle
     
 
   % first time function is called, initialize plot and persistent vars
@@ -141,20 +143,22 @@ function plotMAVStateVariables(uu)
         delta_e_handle = graph_y(t, delta_e, [], 'b');
         ylabel('\delta_e')
         
-        subplot(8,2,14)
+        subplot(8,2,15)
         hold on
         delta_a_handle = graph_y(t, delta_a, [], 'b');
         ylabel('\delta_a')
 
-        subplot(8,2,15)
+        subplot(8,2,16)
         hold on
         delta_r_handle = graph_y(t, delta_r, [], 'b');
         ylabel('\delta_r')
         
-        subplot(8,2,16)
+        subplot(8,2,14)
         hold on
-        delta_t_handle = graph_y(t, delta_t, [], 'b');
-        ylabel('\delta_t')
+        %delta_t_handle = graph_y(t, delta_t, [], 'b');
+        psi_handle = graph_y(t, psi, [], 'b');
+        %ylabel('\delta_t')
+        ylabel('\psi')
         
     % at every other time step, redraw state variables
     else 
@@ -173,7 +177,8 @@ function plotMAVStateVariables(uu)
        graph_y(t, delta_e, delta_e_handle);
        graph_y(t, delta_a, delta_a_handle);
        graph_y(t, delta_r, delta_r_handle);
-       graph_y(t, delta_t, delta_t_handle);
+       %graph_y(t, delta_t, delta_t_handle);
+       graph_y(t, psi, psi_handle, 'b');
     end
 
 

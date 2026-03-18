@@ -106,6 +106,7 @@ function out = forces_moments(x, delta, wind, P)
     
     % ---- Lift coefficient ----
     CL = P.CL_0 + P.CL_alpha*alpha + P.CL_adot*alphadot_nd + P.CL_q*q_nd + P.CL_de*delta_e;
+    %CL = 0.8;
  
     % ---- Drag coefficient ----
     CD = P.CD_0 + P.CD_alpha*alpha + P.CD_de*delta_e;
