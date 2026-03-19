@@ -110,13 +110,18 @@ gamma = 0 * pi/180;   % desired flight path angle [rad]
 Va    = 170;           % desired airspeed [m/s]
 %R     = Inf;          % desired radius (m) - use Inf for straight flight
 
-n     = 1.2;    % load factor
+% n     = 1.2;    % load factor
+n = 1;
 
 % ADD THESE derived quantities:
 g        = MAV.gravity;
 phi_trim = acos(1/n);                    % bank angle from load factor
-R        = Va^2 / (g * tan(phi_trim));   % turn radius [m], taking a turn
 
+if abs(phi_trim) < 1e-6    % essentially zero
+    R = Inf;
+else
+    R = Va^2 / (g * tan(phi_trim));
+end
 
 % 1. Set initial conditions (State vector guess)
 % x = [pn; pe; pd; u; v; w; phi; theta; psi; p; q; r]
@@ -133,8 +138,8 @@ u0 = [
     0.5; % 4 - delta_t
 ];
 % specify which inputs to hold constant (force aileron and rudder to 0 for straight flight)
-%iu = [2; 3];   %straight flight
-iu = [3];       %taking a turn
+iu = [2; 3];   %straight flight
+% iu = [3];       %taking a turn
 
 % 3. Define constant outputs
 % y = [Va; alpha; beta] from the selector block in the SLX model
@@ -162,7 +167,7 @@ dx0 = [0; 0; -Va*sin(gamma); 0; 0; 0; 0; 0; psi_dot; 0; 0; 0];
 %                                                ^^^^^^^ was 0 for straight flight
 
 % Also update x0 body rates to match:
-x0 = [0; 0; -200; Va; 0; 0; phi_trim; gamma; 0; p_trim; q_trim; r_trim];    %taking a turn
+x0 = [0; 0; -13000; Va; 0; 0; phi_trim; gamma; 0; p_trim; q_trim; r_trim];    %taking a turn
 
 %dx0 = [0; 0; -Va*sin(gamma); 0; 0; 0; 0; 0; 0; 0; 0; 0];       %straight flight
 
@@ -176,7 +181,7 @@ idx = [3; 4; 5; 6; 7; 8; 9; 10; 11; 12];
 
 % 5. Compute trim conditions
 fprintf('Running Simulink trim calculation for mavsim_trim...\n');
-[x_trim, u_trim, y_trim, dx_trim] = trim('mavsim_trim_2023b', x0, u0, y0, ix, iu, iy, dx0, idx);
+[x_trim, u_trim, y_trim, dx_trim] = trim('mavsim_trim', x0, u0, y0, ix, iu, iy, dx0, idx);
 
 % Check to make sure that the linearization worked (norm should be very small)
 trim_error = norm(dx_trim(3:end) - dx0(3:end));

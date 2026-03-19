@@ -15,7 +15,7 @@ addpath('../tools')
 aerosonde_parameters
 load('trim_results.mat')
 
-[A, B, C, D] = linmod('mavsim_trim_2023b', x_trim, u_trim);
+[A, B, C, D] = linmod('mavsim_trim', x_trim, u_trim);
 
 fprintf('linmod sizes: A=%dx%d  B=%dx%d\n', size(A,1),size(A,2),size(B,1),size(B,2));
 % Expected: A=12x12, B=12x4
@@ -57,3 +57,9 @@ fprintf('Longitudinal eigenvalues:\n'); disp(eig(A_lon))
 save('ss_models.mat', 'A_lat','B_lat','A_lon','B_lon', ...
      'Va_trim','alpha_trim','theta_trim');
 fprintf('Saved to ss_models.mat\n');
+
+% Restore MAV ICs from trim after aerosonde_parameters reset them
+MAV.pn0 = x_trim(1);  MAV.pe0 = x_trim(2);  MAV.pd0 = x_trim(3);
+MAV.u0  = x_trim(4);  MAV.v0  = x_trim(5);  MAV.w0  = x_trim(6);
+MAV.phi0= x_trim(7);  MAV.theta0=x_trim(8); MAV.psi0= x_trim(9);
+MAV.p0  = x_trim(10); MAV.q0  = x_trim(11); MAV.r0  = x_trim(12);

@@ -96,3 +96,9 @@ save('transfer_function_coef.mat', ...
     'T_phi_delta_a','T_chi_phi','T_theta_delta_e', ...
     'T_h_theta','T_h_Va','T_Va_delta_t','T_Va_theta','T_v_delta_r');
 fprintf('Saved to transfer_function_coef.mat\n');
+
+% Restore MAV ICs from trim after aerosonde_parameters reset them
+MAV.pn0 = x_trim(1);  MAV.pe0 = x_trim(2);  MAV.pd0 = x_trim(3);
+MAV.u0  = x_trim(4);  MAV.v0  = x_trim(5);  MAV.w0  = x_trim(6);
+MAV.phi0= x_trim(7);  MAV.theta0=x_trim(8); MAV.psi0= x_trim(9);
+MAV.p0  = x_trim(10); MAV.q0  = x_trim(11); MAV.r0  = x_trim(12);
