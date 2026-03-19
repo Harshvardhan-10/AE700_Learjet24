@@ -10,6 +10,9 @@
 %     course:   omega_n_chi    (~0.57 rad/s) << roll
 %     sideslip: omega_n_beta   (~0.1 rad/s)
 
+
+addpath('../chap3')
+addpath('../chap4')
 addpath('../chap5')
 load('transfer_function_coef.mat')
 addpath('../parameters')
@@ -159,7 +162,7 @@ omega_n_h = omega_n_theta / 10.0;   % well below pitch bandwidth
 
 AP.altitude_kp   = 2*zeta_h*omega_n_h / (K_theta_DC * Va_trim);
 AP.altitude_ki   = omega_n_h^2 / (K_theta_DC * Va_trim);
-AP.altitude_zone = 200;    % [m] zone for altitude-hold switching
+AP.altitude_zone = 30;    % [m] zone for altitude-hold switching
 
 fprintf('\n=== Altitude Loop ===\n');
 fprintf('  omega_n_h = %.4f rad/s\n', omega_n_h);
