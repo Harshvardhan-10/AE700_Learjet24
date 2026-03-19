@@ -195,3 +195,9 @@ fprintf('  airspeed_throttle_ki = %.4f\n', AP.airspeed_throttle_ki);
 % -----------------------------------------------------------------------
 save('autopilot_gains.mat', 'AP');
 fprintf('\nSaved to autopilot_gains.mat\n');
+
+% Restore MAV ICs from trim after aerosonde_parameters reset them
+MAV.pn0 = x_trim(1);  MAV.pe0 = x_trim(2);  MAV.pd0 = x_trim(3);
+MAV.u0  = x_trim(4);  MAV.v0  = x_trim(5);  MAV.w0  = x_trim(6);
+MAV.phi0= x_trim(7);  MAV.theta0=x_trim(8); MAV.psi0= x_trim(9);
+MAV.p0  = x_trim(10); MAV.q0  = x_trim(11); MAV.r0  = x_trim(12);
