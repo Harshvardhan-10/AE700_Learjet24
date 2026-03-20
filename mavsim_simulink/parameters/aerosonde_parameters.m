@@ -23,7 +23,7 @@ lb2N           = 4.44822;
 % -----------------------------------------------------------------------
 MAV.pn0    =    0;      % initial North position [m]
 MAV.pe0    =    0;      % initial East position  [m]
-MAV.pd0    = -13000;      % initial Down position  [m]  (13000 m altitude)
+MAV.pd0    = -200;      % initial Down position  [m]  (13000 m altitude)
 MAV.u0     =   80;      % initial body-x velocity [m/s]  (~155 kt cruise)
 MAV.v0     =    0;
 MAV.w0     =    0;
@@ -72,6 +72,7 @@ MAV.AR     = MAV.b^2 / MAV.S_wing;              % aspect ratio
 % Atmosphere (ISA sea level)
 % -----------------------------------------------------------------------
 MAV.rho = 1.225;                                 % air density [kg/m^3]
+% MAV.rho = 1.225 * (1 - 2.2557e-5 * (-MAV.pd0))^4.2559;
 
 % -----------------------------------------------------------------------
 % Propulsion

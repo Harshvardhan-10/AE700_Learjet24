@@ -31,10 +31,10 @@ AP.Ts      = SIM.ts_simulation;
 % Control surface and tracking error limits
 %   Project specifies: surface deflection bound = 40 degrees
 % -----------------------------------------------------------------------
-AP.delta_a_max  = 40 * pi/180;   % [rad]
-AP.delta_e_max  = 40 * pi/180;
-AP.delta_r_max  = 40 * pi/180;
-AP.phi_c_max    = 30 * pi/180;   % max commanded roll  [rad]
+AP.delta_a_max  = 20 * pi/180;   % [rad]
+AP.delta_e_max  = 20 * pi/180;
+AP.delta_r_max  = 20 * pi/180;
+AP.phi_c_max    = 20 * pi/180;   % max commanded roll  [rad]
 AP.theta_c_max  = 30 * pi/180;   % max commanded pitch [rad]
 
 e_phi_max   = 20 * pi/180;       % max roll error for gain design  [rad]
@@ -75,7 +75,7 @@ fprintf('  CL poles: '); disp(roots(a_cl)')
 %   => ki = omega_n_chi^2 * Va/g
 % -----------------------------------------------------------------------
 zeta_chi    = 1.0;    % overdamped to avoid oscillation in heading
-omega_n_chi = omega_n_phi / 5.0;
+omega_n_chi = omega_n_phi / 10.0;
 
 AP.course_kp = 2 * zeta_chi * omega_n_chi * Va_trim / AP.gravity;
 AP.course_ki = omega_n_chi^2 * Va_trim / AP.gravity;
@@ -111,8 +111,8 @@ fprintf('  sideslip_ki = %.4f\n', AP.sideslip_ki);
 %   Simple P controller on yaw rate: delta_r = -kp_yd * r
 %   tau_r: washout filter time constant (removes steady-state rudder)
 % -----------------------------------------------------------------------
-AP.yaw_damper_tau_r = 0.05;
-AP.yaw_damper_kp    = 0.5;
+AP.yaw_damper_tau_r = 0.5;
+AP.yaw_damper_kp    = 2;
 
 fprintf('\n=== Yaw Damper ===\n');
 fprintf('  tau_r = %.4f s\n', AP.yaw_damper_tau_r);
@@ -158,7 +158,7 @@ fprintf('  CL poles: '); disp(roots(a_cl_th)')
 %   altitude_zone: if |h_c - h| > zone, pitch controls altitude aggressively
 % -----------------------------------------------------------------------
 zeta_h    = 0.9;
-omega_n_h = omega_n_theta / 10.0;   % well below pitch bandwidth
+omega_n_h = omega_n_theta / 15.0;   % well below pitch bandwidth
 
 AP.altitude_kp   = 2*zeta_h*omega_n_h / (K_theta_DC * Va_trim);
 AP.altitude_ki   = omega_n_h^2 / (K_theta_DC * Va_trim);

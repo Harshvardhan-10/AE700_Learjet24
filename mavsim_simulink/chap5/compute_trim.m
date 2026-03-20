@@ -51,9 +51,18 @@ else
     R = Va^2 / (g * tan(phi_trim));
 end
 
+psi_dot = Va * cos(gamma) / R;   % = g*tan(phi)/Va
+
+% Body rates for coordinated level turn
+p_trim  = 0;                          % level turn, gamma=0
+q_trim  = psi_dot * sin(phi_trim);
+r_trim  = psi_dot * cos(phi_trim);
+
 % 1. Set initial conditions (State vector guess)
 % x = [pn; pe; pd; u; v; w; phi; theta; psi; p; q; r]
 %x0 = [0; 0; -200; Va; 0; 0; 0; gamma; 0; 0; 0; 0];     %straight flight
+x0 = [0; 0; MAV.pd0; Va; 0; 0; phi_trim; gamma; 0; p_trim; q_trim; r_trim];
+
 % specify which states to hold equal to the initial conditions
 ix = [];
 
@@ -68,9 +77,6 @@ u0 = [
 % specify which inputs to hold constant (force aileron and rudder to 0 for straight flight)
 iu = [2; 3];   %straight flight
 % iu = [3];       %taking a turn
-
-% Hold aileron AND rudder at zero (straight flight, no lateral inputs)
-iu = [2; 3];
 
 % -----------------------------------------------------------------------
 % 3. Output constraints
@@ -90,21 +96,10 @@ iy = [1; 3];    % fix Va (index 1) and beta (index 3)
 %      pd_dot = -Va*sin(gamma)  (= 0 for gamma=0, but kept general)
 %      psi_dot = 0              (no turn)
 % -----------------------------------------------------------------------
-dx0 = [0; 0; -Va*sin(gamma); 0; 0; 0; 0; 0; 0; 0; 0; 0];
-%                                              ^
-%                                        psi_dot = 0 (straight flight)
-
-% Body rates for coordinated level turn
-p_trim  = 0;                          % level turn, gamma=0
-q_trim  = psi_dot * sin(phi_trim);
-r_trim  = psi_dot * cos(phi_trim);
 
 % CHANGE dx0:
 dx0 = [0; 0; -Va*sin(gamma); 0; 0; 0; 0; 0; psi_dot; 0; 0; 0];
 %                                                ^^^^^^^ was 0 for straight flight
-
-% Also update x0 body rates to match:
-x0 = [0; 0; -13000; Va; 0; 0; phi_trim; gamma; 0; p_trim; q_trim; r_trim];    %taking a turn
 
 %dx0 = [0; 0; -Va*sin(gamma); 0; 0; 0; 0; 0; 0; 0; 0; 0];       %straight flight
 
@@ -120,8 +115,8 @@ idx = [3; 4; 5; 6; 7; 8; 9; 10; 11; 12];
 fprintf('Running Simulink trim calculation for mavsim_trim...\n');
 [x_trim, u_trim, y_trim, dx_trim] = trim('mavsim_trim', x0, u0, y0, ix, iu, iy, dx0, idx);
 
-[x_trim, u_trim, y_trim, dx_trim] = trim('mavsim_trim_2023b', ...
-                                          x0, u0, y0, ix, iu, iy, dx0, idx);
+% [x_trim, u_trim, y_trim, dx_trim] = trim('mavsim_trim_2023b', ...
+                                          % x0, u0, y0, ix, iu, iy, dx0, idx);
 
 % -----------------------------------------------------------------------
 % 6. Convergence check
