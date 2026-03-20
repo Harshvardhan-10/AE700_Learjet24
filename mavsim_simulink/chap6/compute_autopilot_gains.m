@@ -112,10 +112,10 @@ fprintf('  CL poles: '); disp(roots(a_cl_th)')
 
 % -----------------------------------------------------------------------
 % ALTITUDE LOOP
-%   omega_n_h = omega_n_theta/15
+%   omega_n_h = omega_n_theta/10
 % -----------------------------------------------------------------------
 zeta_h    = 0.9;
-omega_n_h = omega_n_theta / 15.0;
+omega_n_h = omega_n_theta / 10.0;
 
 AP.altitude_kp   = 2*zeta_h*omega_n_h / (K_theta_DC * Va_trim);
 AP.altitude_ki   = omega_n_h^2 / (K_theta_DC * Va_trim);
@@ -169,6 +169,27 @@ if any(real(roots(a_cl_Vp)) >= 0)
     warning('Airspeed/pitch CL has unstable pole — check signs of a_V3.');
 end
 
+fprintf('\n=== Closed-loop Poles Summary ===\n');
+
+loops = {
+    'Roll',              [1, a_phi1+a_phi2*AP.roll_kd,                    a_phi2*AP.roll_kp];
+    'Course',            [1, AP.course_kp*(AP.gravity/Va_trim),            AP.course_ki*(AP.gravity/Va_trim)];
+    'Pitch',             [1, a_theta1+a_theta3*AP.pitch_kd,                a_theta2+a_theta3*AP.pitch_kp];
+    'Altitude',          [1, AP.altitude_kp*K_theta_DC*Va_trim,            AP.altitude_ki*K_theta_DC*Va_trim];
+    'Airspeed/Throttle', [1, a_V1+AP.airspeed_throttle_kp*a_V2,            AP.airspeed_throttle_ki*a_V2];
+    'Airspeed/Pitch',    [1, a_V1+AP.airspeed_pitch_kp*(-a_V3),            AP.airspeed_pitch_ki*(-a_V3)];
+};
+
+for k = 1:size(loops,1)
+    p = roots(loops{k,2});
+    if all(real(p) < 0), status = 'stable'; else, status = 'UNSTABLE'; end
+    fprintf('  %-20s : ', loops{k,1});
+    for j = 1:length(p)
+        fprintf('%+.4f%+.4fi   ', real(p(j)), imag(p(j)));
+    end
+    fprintf('[%s]\n', status);
+end
+
 % -----------------------------------------------------------------------
 % Save
 % -----------------------------------------------------------------------
@@ -181,7 +202,7 @@ fprintf('  omega_n_phi   = %.4f rad/s  (roll — fastest)\n',   omega_n_phi);
 fprintf('  omega_n_theta = %.4f rad/s  (pitch)\n',             omega_n_theta);
 fprintf('  omega_n_chi   = %.4f rad/s  (course  = phi/10)\n',  omega_n_chi);
 fprintf('  omega_n_Vt    = %.4f rad/s  (airspeed/throttle)\n', omega_n_Vt);
-fprintf('  omega_n_h     = %.4f rad/s  (altitude = theta/15)\n', omega_n_h);
+fprintf('  omega_n_h     = %.4f rad/s  (altitude = theta/10)\n', omega_n_h);
 
 % Restore MAV ICs
 MAV.pn0=x_trim(1); MAV.pe0=x_trim(2); MAV.pd0=x_trim(3);
