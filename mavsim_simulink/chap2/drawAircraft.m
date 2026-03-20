@@ -72,7 +72,7 @@ function handle = drawBody(V, F, colors, pn, pe, pd, phi, theta, psi, handle)
 
     V = rotate(V',    phi, theta, psi)';   % rotate about CG
     V = translate(V', pn,  pe,   pd)';     % move to world position
-
+    
     % NED -> MATLAB XYZ:  X=East, Y=North, Z=Up
     R_ned2xyz = [0, 1, 0;
                  1, 0, 0;
