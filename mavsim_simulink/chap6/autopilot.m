@@ -1,16 +1,18 @@
 function y = autopilot(uu, AP)
 % autopilot.m
-%   Full lateral and longitudinal autopilot for mavsim.
+%   Full lateral and longitudinal autopilot.
+%   NEW: airspeed_with_pitch function added (required by project Section 5).
 %
-%   LATERAL LOOPS (inner to outer):
-%     1. roll_with_aileron:   phi  -> delta_a  (PD, uses measured p)
-%     2. course_with_roll:    chi  -> phi_c    (PI)
-%     3. yaw_damper:          r    -> delta_r  (P washout)
+%   LATERAL LOOPS:
+%     roll_with_aileron   phi  -> delta_a  (PD)
+%     course_with_roll    chi  -> phi_c    (PI)
+%     yaw_damper          r    -> delta_r  (P washout)
 %
-%   LONGITUDINAL LOOPS (inner to outer):
-%     1. pitch_with_elevator:   theta -> delta_e  (PD, uses measured q)
-%     2. altitude_with_pitch:   h     -> theta_c  (PI)
-%     3. airspeed_with_throttle: Va   -> delta_t  (PI)
+%   LONGITUDINAL LOOPS:
+%     pitch_with_elevator       theta -> delta_e  (PD)
+%     altitude_with_pitch       h     -> theta_c  (PI)
+%     airspeed_with_throttle    Va    -> delta_t  (PI)
+%     airspeed_with_pitch       Va    -> theta_c  (PI) [NEW — for report Plot I]
 
     % ----------------------------------------------------------------
     % Unpack inputs
@@ -26,7 +28,6 @@ function y = autopilot(uu, AP)
     NN    = NN + 19;
     Va_c  = uu(1+NN);   h_c  = uu(2+NN);   chi_c = uu(3+NN);
     NN    = NN + 3;
-    phi_c_ff = 0;       % no feedforward roll command
     t     = uu(1+NN);
 
     % ----------------------------------------------------------------
@@ -35,40 +36,31 @@ function y = autopilot(uu, AP)
     chi_ref = wrap(chi_c, chi);
 
     if t == 0
-        % Initialise all lateral integrators, hold current angles
         phi_c   = phi;
         delta_r = yaw_damper(r, 1, AP);
-        course_with_roll(chi_ref, chi, 1, AP);   % initialise integrator
+        course_with_roll(chi_ref, chi, 1, AP);
     else
         phi_c   = course_with_roll(chi_ref, chi, 0, AP);
         delta_r = yaw_damper(r, 0, AP);
     end
 
-    % Inner roll loop — always computed
-    delta_a = roll_with_aileron(phi_c + phi_c_ff, phi, p, AP);
+    delta_a = roll_with_aileron(phi_c, phi, p, AP);
 
     % ----------------------------------------------------------------
-    % LONGITUDINAL AUTOPILOT
-    %   h_ref: saturated altitude command — limits how fast altitude
-    %   is commanded to change (prevents abrupt pitch commands)
+    % LONGITUDINAL AUTOPILOT — throttle mode (default)
     % ----------------------------------------------------------------
     h_ref = sat(h_c, h + AP.altitude_zone, h - AP.altitude_zone);
 
     if t == 0
-        % Initialise longitudinal integrators
-        % Pre-load throttle integrator with trim value so output starts
-        % at delta_t_trim rather than zero (prevents initial dive)
         delta_t = airspeed_with_throttle(Va_c, Va, 1, AP);
         theta_c = altitude_with_pitch(h_ref, h, 1, AP);
+        airspeed_with_pitch(Va_c, Va, 1, AP);   % initialise integrator (not used here)
     else
         delta_t = airspeed_with_throttle(Va_c, Va, 0, AP);
         theta_c = altitude_with_pitch(h_ref, h, 0, AP);
     end
 
-    % Inner pitch loop — always computed
     delta_e = pitch_with_elevator(theta_c, theta, q, AP);
-
-    % Clamp throttle to physical range [0, 1]
     delta_t = sat(delta_t, 1, 0);
 
     % ----------------------------------------------------------------
@@ -85,19 +77,14 @@ end
 % =====================================================================
 
 function phi_c_sat = course_with_roll(chi_c, chi, flag, AP)
-% PI controller: chi -> phi_c
-% Plant: chi_dot/phi = g/Va  (integrator in plant -> P gives zero SS error,
-%        but PI improves disturbance rejection and robustness)
     persistent integrator_chi
     if isempty(integrator_chi) || flag == 1
         integrator_chi = 0;
     end
     e_chi = chi_c - chi;
-    % Trapezoidal integration with anti-windup
     integrator_chi = integrator_chi + AP.Ts * e_chi;
     phi_c = AP.course_kp * e_chi + AP.course_ki * integrator_chi;
     phi_c_sat = sat(phi_c, AP.phi_c_max, -AP.phi_c_max);
-    % Anti-windup: if saturated, remove last integration step
     if abs(phi_c_sat) < abs(phi_c)
         integrator_chi = integrator_chi - AP.Ts * e_chi;
     end
@@ -105,9 +92,6 @@ end
 
 
 function delta_a = roll_with_aileron(phi_c, phi, p, AP)
-% PD controller: phi -> delta_a
-% Uses measured roll rate p directly (no dirty derivative needed)
-% CL: s^2 + (a_phi1 + a_phi2*kd)*s + a_phi2*kp = 0
     e_phi   = phi_c - phi;
     delta_a = sat(AP.roll_kp * e_phi + AP.roll_kd * (0 - p), ...
                   AP.delta_a_max, -AP.delta_a_max);
@@ -115,28 +99,20 @@ end
 
 
 function delta_r = yaw_damper(r, flag, AP)
-% Washout yaw damper: improves Dutch roll damping
-% H(s) = tau_r*s / (tau_r*s + 1) applied to r, then scaled by kp
-% Discrete: r_washed(k) = tau/(tau+Ts)*r_washed(k-1) + tau/(tau+Ts)*(r(k)-r(k-1))
     persistent r_prev r_washed
     if isempty(r_prev) || flag == 1
         r_prev   = r;
         r_washed = 0;
     end
-    tau = AP.yaw_damper_tau_r;
-    Ts  = AP.Ts;
-    alpha_wo = tau / (tau + Ts);
+    tau      = AP.yaw_damper_tau_r;
+    alpha_wo = tau / (tau + AP.Ts);
     r_washed = alpha_wo * r_washed + alpha_wo * (r - r_prev);
     r_prev   = r;
-    delta_r  = sat(-AP.yaw_damper_kp * r_washed, ...
-                    AP.delta_r_max, -AP.delta_r_max);
+    delta_r  = sat(-AP.yaw_damper_kp * r_washed, AP.delta_r_max, -AP.delta_r_max);
 end
 
 
 function delta_r_out = sideslip_with_rudder(beta_in, flag, AP)
-% PI controller: beta -> delta_r  (for coordinated turns, beta_c = 0)
-% Not used in main loop (yaw_damper handles delta_r) but available
-% for standalone sideslip regulation tests
     persistent integrator_beta
     if isempty(integrator_beta) || flag == 1
         integrator_beta = 0;
@@ -156,9 +132,6 @@ end
 % =====================================================================
 
 function delta_e = pitch_with_elevator(theta_c, theta, q, AP)
-% PD controller: theta -> delta_e
-% Uses measured pitch rate q directly (no dirty derivative needed)
-% CL: s^2 + (a_theta1+a_theta3*kd)*s + (a_theta2+a_theta3*kp) = 0
     e_theta = theta_c - theta;
     delta_e = sat(AP.pitch_kp * e_theta + AP.pitch_kd * (0 - q), ...
                   AP.delta_e_max, -AP.delta_e_max);
@@ -166,13 +139,8 @@ end
 
 
 function delta_t_sat = airspeed_with_throttle(Va_c, Va, flag, AP)
-% PI controller: Va -> delta_t
-% Plant: Va/delta_t = a_V2/(s + a_V1)
-% Integrator pre-loaded with trim throttle to prevent initial dive
     persistent integrator_Va
     if isempty(integrator_Va) || flag == 1
-        % Pre-load integrator so initial output ≈ delta_t_trim
-        % delta_t = kp*0 + ki*I = delta_t_trim => I = delta_t_trim/ki
         if AP.airspeed_throttle_ki > 0
             integrator_Va = AP.delta_t_trim / AP.airspeed_throttle_ki;
         else
@@ -183,7 +151,6 @@ function delta_t_sat = airspeed_with_throttle(Va_c, Va, flag, AP)
     integrator_Va = integrator_Va + AP.Ts * e_Va;
     delta_t = AP.airspeed_throttle_kp * e_Va + AP.airspeed_throttle_ki * integrator_Va;
     delta_t_sat = sat(delta_t, 1, 0);
-    % Anti-windup
     if abs(delta_t_sat) < abs(delta_t)
         integrator_Va = integrator_Va - AP.Ts * e_Va;
     end
@@ -191,8 +158,6 @@ end
 
 
 function theta_c_sat = altitude_with_pitch(h_c, h, flag, AP)
-% PI controller: h -> theta_c
-% Effective plant (with pitch loop closed): h/theta_c = K_theta_DC*Va/s
     persistent integrator_h
     if isempty(integrator_h) || flag == 1
         integrator_h = 0;
@@ -201,9 +166,32 @@ function theta_c_sat = altitude_with_pitch(h_c, h, flag, AP)
     integrator_h = integrator_h + AP.Ts * e_h;
     theta_c = AP.altitude_kp * e_h + AP.altitude_ki * integrator_h;
     theta_c_sat = sat(theta_c, AP.theta_c_max, -AP.theta_c_max);
-    % Anti-windup
     if abs(theta_c_sat) < abs(theta_c)
         integrator_h = integrator_h - AP.Ts * e_h;
+    end
+end
+
+
+function theta_c_sat = airspeed_with_pitch(Va_c, Va, flag, AP)
+% PI controller: Va -> theta_c  (for use when throttle is fixed at trim)
+%
+% Plant: T_Va_theta = -a_V3/(s+a_V1)  [negative: pitching up reduces Va]
+% Gains kp, ki are negative so that:
+%   Va too low -> e_Va > 0 -> theta_c < 0 (pitch down) -> Va increases
+%
+% To demonstrate this mode in Simulink:
+%   - Hold delta_t = AP.delta_t_trim (constant)
+%   - Connect this function's output to pitch_with_elevator as theta_c
+    persistent integrator_Va_pitch
+    if isempty(integrator_Va_pitch) || flag == 1
+        integrator_Va_pitch = 0;
+    end
+    e_Va = Va_c - Va;
+    integrator_Va_pitch = integrator_Va_pitch + AP.Ts * e_Va;
+    theta_c = AP.airspeed_pitch_kp * e_Va + AP.airspeed_pitch_ki * integrator_Va_pitch;
+    theta_c_sat = sat(theta_c, AP.theta_c_max, -AP.theta_c_max);
+    if abs(theta_c_sat) < abs(theta_c)
+        integrator_Va_pitch = integrator_Va_pitch - AP.Ts * e_Va;
     end
 end
 
@@ -213,7 +201,6 @@ end
 % =====================================================================
 
 function out = sat(in, up_limit, low_limit)
-% Saturation function
     if in > up_limit
         out = up_limit;
     elseif in < low_limit
@@ -225,7 +212,6 @@ end
 
 
 function chi_c_wrapped = wrap(chi_c, chi)
-% Wrap chi_c so that the error chi_c - chi is in (-pi, pi)
     chi_c_wrapped = chi_c;
     while (chi_c_wrapped - chi) >  pi,  chi_c_wrapped = chi_c_wrapped - 2*pi; end
     while (chi_c_wrapped - chi) < -pi,  chi_c_wrapped = chi_c_wrapped + 2*pi; end
