@@ -1,257 +1,222 @@
 function plotMAVStateVariables(uu)
-
+% plotMAVStateVariables.m
+%   Real-time Simulink plotting callback.
+%   Two figures:
+%     Figure 2 — state variables (4 x 3 grid)
+%     Figure 3 — course + control inputs (5 x 1)
 %
-% modified 12/11/2009 - RB
+%   Fixes vs previous version:
+%     - All persistents are cleared on t==0 (prevents stale-axis bug)
+%     - delta_t plotted correctly (was showing [-200,200] x-axis)
+%     - beta axes no longer poisoned by prior workspace data
+%     - drawnow limitrate only called after all updates
 
-    % process inputs to function
-    pn          = uu(1);             % North position (meters)
-    pe          = uu(2);             % East position (meters)
-    h           = -uu(3);            % altitude (meters)
-    u           = uu(4);             % body velocity along x-axis (meters/s)
-    v           = uu(5);             % body velocity along y-axis (meters/s)
-    w           = uu(6);             % body velocity along z-axis (meters/s)
-    phi         = 180/pi*uu(7);      % roll angle (degrees)   
-    theta       = 180/pi*uu(8);      % pitch angle (degrees)
-    psi         = uu(9);             % yaw angle (radians)
-    p           = 180/pi*uu(10);     % body angular rate along x-axis (degrees/s)
-    q           = 180/pi*uu(11);     % body angular rate along y-axis (degrees/s)
-    r           = 180/pi*uu(12);     % body angular rate along z-axis (degrees/s)
-    Va          = uu(13);            % airspeed (m/s)
-    alpha       = 180/pi*uu(14);     % angle of attack (degrees)
-    beta        = 180/pi*uu(15);     % side slip angle (degrees)
-    wn          = uu(16);            % wind in the North direction
-    we          = uu(17);            % wind in the East direction
-    wd          = uu(18);            % wind in the Down direction
-    pn_c        = uu(19);            % commanded North position (meters)
-    pe_c        = uu(20);            % commanded East position (meters)
-    h_c         = uu(21);            % commanded altitude (meters)
-    Va_c        = uu(22);            % commanded airspeed (meters/s)
-    alpha_c     = 180/pi*uu(23);     % commanded angle of attack (degrees)
-    beta_c      = 180/pi*uu(24);     % commanded side slip angle (degrees)
-    phi_c       = 180/pi*uu(25);     % commanded roll angle (degrees)   
-    theta_c     = 180/pi*uu(26);     % commanded pitch angle (degrees)
-    chi_c       = 180/pi*uu(27);     % commanded course (degrees)
-    p_c         = 180/pi*uu(28);     % commanded body angular rate along x-axis (degrees/s)
-    q_c         = 180/pi*uu(29);     % commanded body angular rate along y-axis (degrees/s)
-    r_c         = 180/pi*uu(30);     % commanded body angular rate along z-axis (degrees/s)
-    pn_hat      = uu(31);            % estimated North position (meters)
-    pe_hat      = uu(32);            % estimated East position (meters)
-    h_hat       = uu(33);            % estimated altitude (meters)
-    Va_hat      = uu(34);            % estimated airspeed (meters/s)
-    alpha_hat   = 180/pi*uu(35);     % estimated angle of attack (degrees)
-    beta_hat    = 180/pi*uu(36);     % estimated side slip angle (degrees)
-    phi_hat     = 180/pi*uu(37);     % estimated roll angle (degrees)   
-    theta_hat   = 180/pi*uu(38);     % estimated pitch angle (degrees)
-    chi_hat     = 180/pi*uu(39);     % estimated course (degrees)
-    p_hat       = 180/pi*uu(40);     % estimated body angular rate along x-axis (degrees/s)
-    q_hat       = 180/pi*uu(41);     % estimated body angular rate along y-axis (degrees/s)
-    r_hat       = 180/pi*uu(42);     % estimated body angular rate along z-axis (degrees/s)
-%    Vg_hat      = uu(43);            % estimated groundspeed
-%    wn_hat      = uu(44);            % estimated North wind
-%    we_hat      = uu(45);            % estimated East wind
-%    psi_hat     = 180/pi*uu(46);     % estimated heading
-%    bx_hat      = uu(47);            % estimated x-gyro bias
-%    by_hat      = uu(48);            % estimated y-gyro bias
-%    bz_hat      = uu(49);            % estimated z-gyro bias
-    delta_e     = 180/pi*uu(50);     % elevator angle (degrees)
-    delta_a     = 180/pi*uu(51);     % aileron angle (degrees)
-    delta_r     = 180/pi*uu(52);     % rudder angle (degrees)
-    delta_t     = uu(53);            % throttle setting (unitless)
-    t           = uu(54);            % simulation time
-    
-    % compute course angle
-    chi = 180/pi*atan2(Va*sin(psi)+we, Va*cos(psi)+wn);
-    psi = 180/pi*uu(9)
+    % ----------------------------------------------------------------
+    % Unpack inputs
+    % ----------------------------------------------------------------
+    pn        = uu(1);
+    pe        = uu(2);
+    h         = -uu(3);
+    phi       = 180/pi * uu(7);
+    theta     = 180/pi * uu(8);
+    psi       = 180/pi * uu(9);
+    p         = 180/pi * uu(10);
+    q_body    = 180/pi * uu(11);
+    r_body    = 180/pi * uu(12);
+    Va        = uu(13);
+    alpha     = 180/pi * uu(14);
+    beta      = 180/pi * uu(15);
+    wn        = uu(16);
+    we        = uu(17);
+    t         = uu(54);
 
+    pn_c      = uu(19);   pe_c    = uu(20);   h_c      = uu(21);
+    Va_c      = uu(22);   alpha_c = 180/pi*uu(23); beta_c = 180/pi*uu(24);
+    phi_c     = 180/pi*uu(25);  theta_c = 180/pi*uu(26); chi_c = 180/pi*uu(27);
+    p_c       = 180/pi*uu(28);  q_c     = 180/pi*uu(29); r_c   = 180/pi*uu(30);
 
-    % define persistent variables 
-    persistent pn_handle
-    persistent pe_handle
-    persistent h_handle
-    persistent Va_handle
-    persistent alpha_handle
-    persistent beta_handle
-    persistent phi_handle
-    persistent theta_handle
-    persistent chi_handle
-    persistent p_handle
-    persistent q_handle
-    persistent r_handle
-    persistent delta_e_handle
-    persistent delta_a_handle
-    persistent delta_r_handle
-    %persistent delta_t_handle
-    persistent psi_handle
-    
+    pn_hat    = uu(31);   pe_hat  = uu(32);   h_hat    = uu(33);
+    Va_hat    = uu(34);   alpha_hat = 180/pi*uu(35); beta_hat = 180/pi*uu(36);
+    phi_hat   = 180/pi*uu(37);  theta_hat = 180/pi*uu(38); chi_hat = 180/pi*uu(39);
+    p_hat     = 180/pi*uu(40);  q_hat   = 180/pi*uu(41); r_hat   = 180/pi*uu(42);
 
-  % first time function is called, initialize plot and persistent vars
-    %if t==0,
-    if isempty(pn_handle)
+    delta_e   = 180/pi * uu(50);
+    delta_a   = 180/pi * uu(51);
+    delta_r   = 180/pi * uu(52);
+    delta_t   = uu(53);
 
-        figure(2), clf
+    % Course angle
+    chi = 180/pi * atan2(Va*sin(uu(9)) + we, Va*cos(uu(9)) + wn);
 
-        subplot(8,2,1)
-        hold on
-        pn_handle = graph_y_yhat_yd(t, pn, pn_hat, pn_c, 'p_n', []);
-        
-        subplot(8,2,2)
-        hold on
-        Va_handle = graph_y_yhat_yd(t, Va, Va_hat, Va_c, 'V_a', []);
+    % ----------------------------------------------------------------
+    % Persistent handles — ALL declared here so clear works below
+    % ----------------------------------------------------------------
+    persistent fig_states fig_ctrl
+    persistent h_pn h_pe h_h
+    persistent h_phi h_theta h_psi
+    persistent h_p h_q h_r
+    persistent h_Va h_alpha h_beta
+    persistent h_chi h_de h_da h_dr h_dt
 
-        subplot(8,2,3)
-        hold on
-        pe_handle = graph_y_yhat_yd(t, pe, pe_hat, pe_c, 'p_e', []);
-
-        subplot(8,2,4)
-        hold on
-        alpha_handle = graph_y_yhat_yd(t, alpha, alpha_hat, alpha_c, '\alpha', []);
-
-        subplot(8,2,5)
-        hold on
-        h_handle = graph_y_yhat_yd(t, h, h_hat, h_c, 'h', []);
-
-        subplot(8,2,6)
-        hold on
-        beta_handle = graph_y_yhat_yd(t, beta, beta_hat, beta_c, '\beta', []);
-
-        subplot(8,2,7)
-        hold on
-        phi_handle = graph_y_yhat_yd(t, phi, phi_hat, phi_c, '\phi', []);
-        
-        subplot(8,2,8)
-        hold on
-        p_handle = graph_y_yhat_yd(t, p, p_hat, p_c, 'p', []);
-        
-        subplot(8,2,9)
-        hold on
-        theta_handle = graph_y_yhat_yd(t, theta, theta_hat, theta_c, '\theta', []);
-        
-        subplot(8,2,10)
-        hold on
-        q_handle = graph_y_yhat_yd(t, q, q_hat, q_c, 'q', []);
-        
-        subplot(8,2,11)
-        hold on
-        chi_handle = graph_y_yhat_yd(t, chi, chi_hat, chi_c, '\chi', []);
-        
-        subplot(8,2,12)
-        hold on
-        r_handle = graph_y_yhat_yd(t, r, r_hat, r_c, 'r', []);
-        
-        subplot(8,2,13)
-        hold on
-        delta_e_handle = graph_y(t, delta_e, [], 'b');
-        ylabel('\delta_e')
-        
-        subplot(8,2,15)
-        hold on
-        delta_a_handle = graph_y(t, delta_a, [], 'b');
-        ylabel('\delta_a')
-
-        subplot(8,2,16)
-        hold on
-        delta_r_handle = graph_y(t, delta_r, [], 'b');
-        ylabel('\delta_r')
-        
-        subplot(8,2,14)
-        hold on
-        %delta_t_handle = graph_y(t, delta_t, [], 'b');
-        psi_handle = graph_y(t, psi, [], 'b');
-        %ylabel('\delta_t')
-        ylabel('\psi')
-        
-    % at every other time step, redraw state variables
-    else 
-       graph_y_yhat_yd(t, pn, pn_hat, pn_c, 'p_n', pn_handle);
-       graph_y_yhat_yd(t, pe, pe_hat, pe_c, 'p_e', pe_handle);
-       graph_y_yhat_yd(t, h, h_hat, h_c, 'h', h_handle);
-       graph_y_yhat_yd(t, Va, Va_hat, Va_c, 'V_a', Va_handle);
-       graph_y_yhat_yd(t, alpha, alpha_hat, alpha_c, '\alpha', alpha_handle);
-       graph_y_yhat_yd(t, beta, beta_hat, beta_c, '\beta', beta_handle);
-       graph_y_yhat_yd(t, phi, phi_hat, phi_c, '\phi', phi_handle);
-       graph_y_yhat_yd(t, theta, theta_hat, theta_c, '\theta', theta_handle);
-       graph_y_yhat_yd(t, chi, chi_hat, chi_c, '\chi', chi_handle);
-       graph_y_yhat_yd(t, p, p_hat, p_c, 'p', p_handle);
-       graph_y_yhat_yd(t, q, q_hat, q_c, 'q', q_handle);
-       graph_y_yhat_yd(t, r, r_hat, r_c, 'r', r_handle);
-       graph_y(t, delta_e, delta_e_handle);
-       graph_y(t, delta_a, delta_a_handle);
-       graph_y(t, delta_r, delta_r_handle);
-       %graph_y(t, delta_t, delta_t_handle);
-       graph_y(t, psi, psi_handle, 'b');
+    % ----------------------------------------------------------------
+    % On t==0: wipe everything and rebuild from scratch
+    % This prevents stale x/y data from a previous simulation run
+    % poisoning the axis ranges of the new run.
+    % ----------------------------------------------------------------
+    if t == 0
+        % Clear all persistents so figures get rebuilt fresh
+        fig_states = []; fig_ctrl = [];
+        h_pn=[]; h_pe=[]; h_h=[];
+        h_phi=[]; h_theta=[]; h_psi=[];
+        h_p=[]; h_q=[]; h_r=[];
+        h_Va=[]; h_alpha=[]; h_beta=[];
+        h_chi=[]; h_de=[]; h_da=[]; h_dr=[]; h_dt=[];
     end
 
+    % ----------------------------------------------------------------
+    % Build figures on first call (t==0 OR figure was closed)
+    % ----------------------------------------------------------------
+    if isempty(fig_states) || ~isvalid(fig_states)
+
+        % ---- Figure 2: States --------------------------------------
+        fig_states = figure(2);
+        clf(fig_states);
+        set(fig_states, 'Name',     'MAV State Variables', ...
+                        'Position', [20, 40, 1200, 860]);
+
+        % Row 1 — Position
+        subplot(4,3,1);  hold on;
+        h_pn  = mk3(t, pn,    pn_hat,  pn_c,   'p_n (m)');
+
+        subplot(4,3,2);  hold on;
+        h_pe  = mk3(t, pe,    pe_hat,  pe_c,   'p_e (m)');
+
+        subplot(4,3,3);  hold on;
+        h_h   = mk3(t, h,     h_hat,   h_c,    'h (m)');
+
+        % Row 2 — Attitude
+        subplot(4,3,4);  hold on;
+        h_phi   = mk3(t, phi,   phi_hat,   phi_c,   '\phi (deg)');
+
+        subplot(4,3,5);  hold on;
+        h_theta = mk3(t, theta, theta_hat, theta_c, '\theta (deg)');
+
+        subplot(4,3,6);  hold on;
+        h_psi   = mk1(t, psi, '\psi (deg)');
+
+        % Row 3 — Body rates
+        subplot(4,3,7);  hold on;
+        h_p = mk3(t, p,      p_hat,  p_c, 'p (deg/s)');
+
+        subplot(4,3,8);  hold on;
+        h_q = mk3(t, q_body, q_hat,  q_c, 'q (deg/s)');
+
+        subplot(4,3,9);  hold on;
+        h_r = mk3(t, r_body, r_hat,  r_c, 'r (deg/s)');
+
+        % Row 4 — Aerodynamic
+        subplot(4,3,10);  hold on;
+        h_Va    = mk3(t, Va,    Va_hat,    Va_c,    'V_a (m/s)');
+
+        subplot(4,3,11);  hold on;
+        h_alpha = mk3(t, alpha, alpha_hat, alpha_c, '\alpha (deg)');
+
+        subplot(4,3,12);  hold on;
+        h_beta  = mk3(t, beta,  beta_hat,  beta_c,  '\beta (deg)');
+
+        % ---- Figure 3: Course + Controls ---------------------------
+        fig_ctrl = figure(3);
+        clf(fig_ctrl);
+        set(fig_ctrl, 'Name',     'Control Inputs', ...
+                      'Position', [1240, 40, 680, 860]);
+
+        subplot(5,1,1);  hold on;
+        h_chi = mk3(t, chi, chi_hat, chi_c, '\chi (deg)');
+
+        subplot(5,1,2);  hold on;
+        h_de  = mk1(t, delta_e, '\delta_e (deg)');
+
+        subplot(5,1,3);  hold on;
+        h_da  = mk1(t, delta_a, '\delta_a (deg)');
+
+        subplot(5,1,4);  hold on;
+        h_dr  = mk1(t, delta_r, '\delta_r (deg)');
+
+        subplot(5,1,5);  hold on;
+        h_dt  = mk1(t, delta_t, '\delta_t');
+
+    % ----------------------------------------------------------------
+    % Subsequent calls — append one point to each line
+    % ----------------------------------------------------------------
+    else
+        app3(h_pn,    t, pn,    pn_hat,  pn_c);
+        app3(h_pe,    t, pe,    pe_hat,  pe_c);
+        app3(h_h,     t, h,     h_hat,   h_c);
+
+        app3(h_phi,   t, phi,   phi_hat,   phi_c);
+        app3(h_theta, t, theta, theta_hat, theta_c);
+        app1(h_psi,   t, psi);
+
+        app3(h_p,     t, p,      p_hat,  p_c);
+        app3(h_q,     t, q_body, q_hat,  q_c);
+        app3(h_r,     t, r_body, r_hat,  r_c);
+
+        app3(h_Va,    t, Va,    Va_hat,    Va_c);
+        app3(h_alpha, t, alpha, alpha_hat, alpha_c);
+        app3(h_beta,  t, beta,  beta_hat,  beta_c);
+
+        app3(h_chi,   t, chi,     chi_hat,  chi_c);
+        app1(h_de,    t, delta_e);
+        app1(h_da,    t, delta_a);
+        app1(h_dr,    t, delta_r);
+        app1(h_dt,    t, delta_t);
+
+        drawnow limitrate
+    end
+end
 
 
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% graph y with lable mylabel
-function handle = graph_y(t, y, handle, color)
-  
-  if isempty(handle)
-    handle    = plot(t,y,color);
-  else
-    set(handle,'Xdata',[get(handle,'Xdata'),t]);
-    set(handle,'Ydata',[get(handle,'Ydata'),y]);
-    %drawnow
-  end
+% ========================================================================
+%  INIT HELPERS  — create lines and label the subplot
+% ========================================================================
 
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% graph y and yd with lable mylabel
-function handle = graph_y_yd(t, y, yd, lab, handle)
-  
-  if isempty(handle)
-    handle(1)    = plot(t,y,'b');
-    handle(2)    = plot(t,yd,'g--');
-    ylabel(lab)
-    set(get(gca, 'YLabel'),'Rotation',0.0);
-  else
-    set(handle(1),'Xdata',[get(handle(1),'Xdata'),t]);
-    set(handle(1),'Ydata',[get(handle(1),'Ydata'),y]);
-    set(handle(2),'Xdata',[get(handle(2),'Xdata'),t]);
-    set(handle(2),'Ydata',[get(handle(2),'Ydata'),yd]);
-    %drawnow
-  end
+function hdl = mk3(t, y, yhat, yd, label)
+% Three lines: actual (blue solid), estimated (green dashed), commanded (red dash-dot)
+    hdl(1) = plot(t, y,    'b-',  'LineWidth', 1.4);
+    hdl(2) = plot(t, yhat, 'g--', 'LineWidth', 1.0);
+    hdl(3) = plot(t, yd,   'r-.', 'LineWidth', 1.0);
+    finish_ax(label);
+    legend('actual','est.','cmd','Location','best','FontSize',8,'Box','off');
+end
 
+function hdl = mk1(t, y, label)
+% Single line (psi, control surfaces)
+    hdl = plot(t, y, 'b-', 'LineWidth', 1.4);
+    finish_ax(label);
+end
 
+function finish_ax(label)
+    ylabel(label, 'FontSize', 11, 'Rotation', 0, ...
+           'HorizontalAlignment', 'right', 'VerticalAlignment', 'middle');
+    xlabel('t (s)', 'FontSize', 10);
+    grid on;
+    set(gca, 'FontSize', 10);
+    % Let MATLAB auto-scale both axes from the actual data — no manual limits
+    axis auto;
+end
 
 
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% plot the variable y in blue, its estimated value yhat in green, and its 
-% desired value yd in red, lab is the label on the graph
-function handle = graph_y_yhat_yd(t, y, yhat, yd, lab, handle)
-  
-  if isempty(handle)
-    handle(1)   = plot(t,y,'b');
-    handle(2)   = plot(t,yhat,'g--');
-    handle(3)   = plot(t,yd,'r-.');
-    ylabel(lab)
-    set(get(gca,'YLabel'),'Rotation',0.0);
-  else
-    set(handle(1),'Xdata',[get(handle(1),'Xdata'),t]);
-    set(handle(1),'Ydata',[get(handle(1),'Ydata'),y]);
-    set(handle(2),'Xdata',[get(handle(2),'Xdata'),t]);
-    set(handle(2),'Ydata',[get(handle(2),'Ydata'),yhat]);
-    set(handle(3),'Xdata',[get(handle(3),'Xdata'),t]);
-    set(handle(3),'Ydata',[get(handle(3),'Ydata'),yd]);     
-    %drawnow
-  end
+% ========================================================================
+%  UPDATE HELPERS  — append one data point
+% ========================================================================
 
-%
-%=============================================================================
-% sat
-% saturates the input between high and low
-%=============================================================================
-%
-function out=sat(in, low, high)
+function app3(hdl, t, y, yhat, yd)
+    app1(hdl(1), t, y);
+    app1(hdl(2), t, yhat);
+    app1(hdl(3), t, yd);
+end
 
-  if in < low
-      out = low;
-  elseif in > high
-      out = high;
-  else
-      out = in;
-  end
-
-% end sat  
-
-
+function app1(h, t, y)
+    set(h, 'XData', [get(h,'XData'), t], ...
+           'YData', [get(h,'YData'), y]);
+end
