@@ -248,16 +248,28 @@ end
 Va_trim    = y_trim(1);
 alpha_trim = y_trim(2);
 beta_trim  = y_trim(3);
+phi_trim   = x_trim(7);
 theta_trim = x_trim(8);
+psi_trim   = x_trim(9);
 
-fprintf('\n--- Straight-level trim results ---\n');
+delta_e_trim = u_trim(1);
+delta_a_trim = u_trim(2);
+delta_r_trim = u_trim(3);
+delta_t_trim = u_trim(4);
+
+fprintf('\n========================================\n');
+fprintf(' Trim Results  Va=%.1f m/s  gamma=%.1f deg\n', Va, gamma*180/pi);
+fprintf('========================================\n');
 fprintf('Va      = %.4f m/s\n',  Va_trim);
-fprintf('alpha   = %.4f deg  (must be 5-7 deg)\n', alpha_trim*180/pi);
-fprintf('beta    = %.4f deg  (must be ~0)\n',       beta_trim*180/pi);
-fprintf('theta   = %.4f deg\n',  theta_trim*180/pi);
-fprintf('delta_e = %.4f deg\n',  u_trim(1)*180/pi);
-fprintf('delta_t = %.4f\n',      u_trim(4));
-fprintf('p,q,r   = [%.2e  %.2e  %.2e]\n', x_trim(10),x_trim(11),x_trim(12));
+fprintf('alpha   = %.4f deg\n',  alpha_trim  * 180/pi);
+fprintf('beta    = %.4f deg\n',  beta_trim   * 180/pi);
+fprintf('phi     = %.4f deg\n',  phi_trim    * 180/pi);   % should be ~0
+fprintf('theta   = %.4f deg\n',  theta_trim  * 180/pi);
+fprintf('delta_e = %.4f deg\n',  delta_e_trim * 180/pi);
+fprintf('delta_a = %.4f deg\n',  delta_a_trim * 180/pi);  % should be 0
+fprintf('delta_r = %.4f deg\n',  delta_r_trim * 180/pi);  % should be 0
+fprintf('delta_t = %.4f\n',      delta_t_trim);
+fprintf('----------------------------------------\n');
 
 % Check alpha requirement
 if alpha_trim*180/pi < 5 || alpha_trim*180/pi > 7
