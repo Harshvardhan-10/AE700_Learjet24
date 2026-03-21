@@ -4,12 +4,7 @@ function plotMAVStateVariables(uu)
 %   Two figures:
 %     Figure 2 — state variables (4 x 3 grid)
 %     Figure 3 — course + control inputs (5 x 1)
-%
-%   Fixes vs previous version:
-%     - All persistents are cleared on t==0 (prevents stale-axis bug)
-%     - delta_t plotted correctly (was showing [-200,200] x-axis)
-%     - beta axes no longer poisoned by prior workspace data
-%     - drawnow limitrate only called after all updates
+
 
     % ----------------------------------------------------------------
     % Unpack inputs
