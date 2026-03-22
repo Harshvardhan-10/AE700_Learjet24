@@ -1,40 +1,20 @@
 % verify_forces_moments.m
 %   Section 3: Verifies forces_moments.m by applying individual control
 %   surface deflections and observing the resulting motion.
-%   Produces report-ready figures and prints the verification table.
 %
-%   Place in chap4/ and run. Requires forces_moments.m in same folder.
+%   Requires forces_moments.m in same folder.
 
 addpath('../parameters')
 addpath('../tools')
+addpath('../chap3')
 aerosonde_parameters
 
 % -----------------------------------------------------------------------
-% Integration helper (calls real forces_moments.m)
+% Integration helper (calls forces_moments.m and mav_dynamics.m)
 % -----------------------------------------------------------------------
-function x_new = step_eom(x, delta, wind, MAV, dt)
-    fm  = forces_moments(x, delta, wind, MAV);
-    F   = fm(1:3);  TQ = fm(4:6);
-    u=x(4); v=x(5); w=x(6);
-    phi=x(7); theta=x(8); psi=x(9);
-    p=x(10); q=x(11); r=x(12);
-    cphi=cos(phi); sphi=sin(phi);
-    cth=cos(theta); sth=sin(theta);
-    cpsi=cos(psi); spsi=sin(psi);
-    R=[cth*cpsi, sphi*sth*cpsi-cphi*spsi, cphi*sth*cpsi+sphi*spsi;
-       cth*spsi, sphi*sth*spsi+cphi*cpsi, cphi*sth*spsi-sphi*cpsi;
-      -sth,      sphi*cth,                cphi*cth];
-    pd = R*[u;v;w];
-    xdot = [pd;
-            r*v-q*w+F(1)/MAV.mass;
-            p*w-r*u+F(2)/MAV.mass;
-            q*u-p*v+F(3)/MAV.mass;
-            p+(q*sphi+r*cphi)*tan(theta);
-            q*cphi-r*sphi;
-            (q*sphi+r*cphi)/cth;
-            MAV.Gamma1*p*q-MAV.Gamma2*q*r+MAV.Gamma3*TQ(1)+MAV.Gamma4*TQ(3);
-            MAV.Gamma5*p*r-MAV.Gamma6*(p^2-r^2)+TQ(2)/MAV.Jy;
-            MAV.Gamma7*p*q-MAV.Gamma1*q*r+MAV.Gamma4*TQ(1)+MAV.Gamma8*TQ(3)];
+function x_new = step_eom(x, delta, wind, MAV, dt, tk)
+    fm = forces_moments(x, delta, wind, MAV);   % [fx; fy; fz; l; m; n]
+    xdot = mav_dynamics(tk, x, fm, 1, MAV);     % flag 1 => derivatives
     x_new = x + dt*xdot;
 end
 
@@ -65,7 +45,7 @@ dt_trim = 0.18;        % approximate trim throttle
 % -----------------------------------------------------------------------
 traj1 = zeros(12,N);  traj1(:,1) = x0;  x = x0;
 for k = 1:N-1
-    x = step_eom(x, [de_test; 0; 0; dt_trim], wind, MAV, dt);
+    x = step_eom(x, [de_test; 0; 0; dt_trim], wind, MAV, dt, t(k));
     traj1(:,k+1) = x;
 end
 
@@ -75,7 +55,7 @@ end
 % -----------------------------------------------------------------------
 traj2 = zeros(12,N);  traj2(:,1) = x0;  x = x0;
 for k = 1:N-1
-    x = step_eom(x, [0; da_test; 0; dt_trim], wind, MAV, dt);
+    x = step_eom(x, [0; da_test; 0; dt_trim], wind, MAV, dt, t(k));
     traj2(:,k+1) = x;
 end
 
@@ -85,7 +65,7 @@ end
 % -----------------------------------------------------------------------
 traj3 = zeros(12,N);  traj3(:,1) = x0;  x = x0;
 for k = 1:N-1
-    x = step_eom(x, [0; 0; dr_test; dt_trim], wind, MAV, dt);
+    x = step_eom(x, [0; 0; dr_test; dt_trim], wind, MAV, dt, t(k));
     traj3(:,k+1) = x;
 end
 
