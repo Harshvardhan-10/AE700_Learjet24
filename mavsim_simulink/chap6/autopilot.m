@@ -1,19 +1,4 @@
 function y = autopilot(uu, AP)
-% autopilot.m
-%   Full lateral and longitudinal autopilot.
-%   NEW: airspeed_with_pitch function added (required by project Section 5).
-%
-%   LATERAL LOOPS:
-%     roll_with_aileron   phi  -> delta_a  (PD)
-%     course_with_roll    chi  -> phi_c    (PI)
-%     yaw_damper          r    -> delta_r  (P washout)
-%
-%   LONGITUDINAL LOOPS:
-%     pitch_with_elevator       theta -> delta_e  (PD)
-%     altitude_with_pitch       h     -> theta_c  (PI)
-%     airspeed_with_throttle    Va    -> delta_t  (PI)
-%     airspeed_with_pitch       Va    -> theta_c  (PI) [NEW — for report Plot I]
-
     % ----------------------------------------------------------------
     % Unpack inputs
     % ----------------------------------------------------------------
@@ -29,6 +14,13 @@ function y = autopilot(uu, AP)
     Va_c  = uu(1+NN);   h_c  = uu(2+NN);   chi_c = uu(3+NN);
     NN    = NN + 3;
     t     = uu(1+NN);
+    
+    % Check for longitudinal mode flag (default to 1 if not provided)
+    if length(uu) >= 24
+        long_mode = uu(24);
+    else
+        long_mode = 1;
+    end
 
     % ----------------------------------------------------------------
     % LATERAL AUTOPILOT
@@ -47,35 +39,55 @@ function y = autopilot(uu, AP)
     delta_a = roll_with_aileron(phi_c, phi, p, AP);
 
     % ----------------------------------------------------------------
-    % LONGITUDINAL AUTOPILOT — throttle mode (default)
+    % LONGITUDINAL AUTOPILOT MODES
     % ----------------------------------------------------------------
     h_ref = sat(h_c, h + AP.altitude_zone, h - AP.altitude_zone);
 
-    if t == 0
-        delta_t = airspeed_with_throttle(Va_c, Va, 1, AP);
-        theta_c = altitude_with_pitch(h_ref, h, 1, AP);
-        airspeed_with_pitch(Va_c, Va, 1, AP);   % initialise integrator (not used here)
-    else
-        delta_t = airspeed_with_throttle(Va_c, Va, 0, AP);
-        theta_c = altitude_with_pitch(h_ref, h, 0, AP);
+    if long_mode == 1 
+        % MODE 1: Standard (Alt -> Pitch, Va -> Throttle)
+        if t == 0
+            delta_t = airspeed_with_throttle(Va_c, Va, 1, AP);
+            theta_c = altitude_with_pitch(h_ref, h, 1, AP);
+            airspeed_with_pitch(Va_c, Va, 1, AP); % init
+        else
+            delta_t = airspeed_with_throttle(Va_c, Va, 0, AP);
+            theta_c = altitude_with_pitch(h_ref, h, 0, AP);
+        end
+        
+    elseif long_mode == 2 
+        % MODE 2: Pure Pitch Step (Bypass alt loop, h_c carries theta_c)
+        theta_c = h_c; 
+        if t == 0
+            delta_t = airspeed_with_throttle(Va_c, Va, 1, AP);
+        else
+            delta_t = airspeed_with_throttle(Va_c, Va, 0, AP);
+        end
+        
+    elseif long_mode == 3 
+        % MODE 3: Airspeed via Pitch (Throttle fixed at trim)
+        delta_t = AP.delta_t_trim;
+        if t == 0
+            theta_c = airspeed_with_pitch(Va_c, Va, 1, AP);
+        else
+            theta_c = airspeed_with_pitch(Va_c, Va, 0, AP);
+        end
     end
 
+    % Inner pitch loop always runs
     delta_e = pitch_with_elevator(theta_c, theta, q, AP);
     delta_t = sat(delta_t, 1, 0);
 
     % ----------------------------------------------------------------
-    % Outputs
+    % Outputs (Appended theta_c and phi_c so we can plot them easily)
     % ----------------------------------------------------------------
     delta     = [delta_e; delta_a; delta_r; delta_t];
     x_command = [0; 0; h_c; Va_c; 0; 0; phi_c; theta_c; chi_c; 0; 0; 0];
     y = [delta; x_command];
 end
 
-
 % =====================================================================
 %  LATERAL FUNCTIONS
 % =====================================================================
-
 function phi_c_sat = course_with_roll(chi_c, chi, flag, AP)
     persistent integrator_chi
     if isempty(integrator_chi) || flag == 1
@@ -90,13 +102,10 @@ function phi_c_sat = course_with_roll(chi_c, chi, flag, AP)
     end
 end
 
-
 function delta_a = roll_with_aileron(phi_c, phi, p, AP)
     e_phi   = phi_c - phi;
-    delta_a = sat(AP.roll_kp * e_phi + AP.roll_kd * (0 - p), ...
-                  AP.delta_a_max, -AP.delta_a_max);
+    delta_a = sat(AP.roll_kp * e_phi + AP.roll_kd * (0 - p), AP.delta_a_max, -AP.delta_a_max);
 end
-
 
 function delta_r = yaw_damper(r, flag, AP)
     persistent r_prev r_washed
@@ -111,32 +120,13 @@ function delta_r = yaw_damper(r, flag, AP)
     delta_r  = sat(-AP.yaw_damper_kp * r_washed, AP.delta_r_max, -AP.delta_r_max);
 end
 
-
-function delta_r_out = sideslip_with_rudder(beta_in, flag, AP)
-    persistent integrator_beta
-    if isempty(integrator_beta) || flag == 1
-        integrator_beta = 0;
-    end
-    e_beta = 0 - beta_in;
-    integrator_beta = integrator_beta + AP.Ts * e_beta;
-    out = AP.sideslip_kp * e_beta + AP.sideslip_ki * integrator_beta;
-    delta_r_out = sat(out, AP.delta_r_max, -AP.delta_r_max);
-    if abs(delta_r_out) < abs(out)
-        integrator_beta = integrator_beta - AP.Ts * e_beta;
-    end
-end
-
-
 % =====================================================================
 %  LONGITUDINAL FUNCTIONS
 % =====================================================================
-
 function delta_e = pitch_with_elevator(theta_c, theta, q, AP)
     e_theta = theta_c - theta;
-    delta_e = sat(AP.pitch_kp * e_theta + AP.pitch_kd * (0 - q), ...
-                  AP.delta_e_max, -AP.delta_e_max);
+    delta_e = sat(AP.pitch_kp * e_theta + AP.pitch_kd * (0 - q), AP.delta_e_max, -AP.delta_e_max);
 end
-
 
 function delta_t_sat = airspeed_with_throttle(Va_c, Va, flag, AP)
     persistent integrator_Va
@@ -156,7 +146,6 @@ function delta_t_sat = airspeed_with_throttle(Va_c, Va, flag, AP)
     end
 end
 
-
 function theta_c_sat = altitude_with_pitch(h_c, h, flag, AP)
     persistent integrator_h
     if isempty(integrator_h) || flag == 1
@@ -171,17 +160,7 @@ function theta_c_sat = altitude_with_pitch(h_c, h, flag, AP)
     end
 end
 
-
 function theta_c_sat = airspeed_with_pitch(Va_c, Va, flag, AP)
-% PI controller: Va -> theta_c  (for use when throttle is fixed at trim)
-%
-% Plant: T_Va_theta = -a_V3/(s+a_V1)  [negative: pitching up reduces Va]
-% Gains kp, ki are negative so that:
-%   Va too low -> e_Va > 0 -> theta_c < 0 (pitch down) -> Va increases
-%
-% To demonstrate this mode in Simulink:
-%   - Hold delta_t = AP.delta_t_trim (constant)
-%   - Connect this function's output to pitch_with_elevator as theta_c
     persistent integrator_Va_pitch
     if isempty(integrator_Va_pitch) || flag == 1
         integrator_Va_pitch = 0;
@@ -195,21 +174,14 @@ function theta_c_sat = airspeed_with_pitch(Va_c, Va, flag, AP)
     end
 end
 
-
 % =====================================================================
 %  UTILITY FUNCTIONS
 % =====================================================================
-
 function out = sat(in, up_limit, low_limit)
-    if in > up_limit
-        out = up_limit;
-    elseif in < low_limit
-        out = low_limit;
-    else
-        out = in;
-    end
+    if in > up_limit, out = up_limit;
+    elseif in < low_limit, out = low_limit;
+    else, out = in; end
 end
-
 
 function chi_c_wrapped = wrap(chi_c, chi)
     chi_c_wrapped = chi_c;

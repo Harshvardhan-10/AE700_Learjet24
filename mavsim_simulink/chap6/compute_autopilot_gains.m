@@ -1,7 +1,5 @@
 % compute_autopilot_gains.m
-%   Designs all autopilot gains using B&M Chapter 6 methodology.
-%   FIX: Surface deflection limit = 40 deg (per project spec, not 20 deg).
-%   NEW: Adds airspeed_pitch_kp and airspeed_pitch_ki for Va control via pitch.
+% Designs all autopilot gains using B&M Chapter 6 methodology.
 
 addpath('../chap3')
 addpath('../chap4')
@@ -20,10 +18,10 @@ AP.Ts      = SIM.ts_simulation;
 % Control surface limits
 %   Project spec: bound = 40 degrees
 % -----------------------------------------------------------------------
-AP.delta_a_max = 40 * pi/180;   % FIX: project requires 40 deg (was 20)
+AP.delta_a_max = 40 * pi/180;   
 AP.delta_e_max = 40 * pi/180;
 AP.delta_r_max = 40 * pi/180;
-AP.phi_c_max   = 45 * pi/180;   % max commanded roll [rad]
+AP.phi_c_max   = 30 * pi/180;   % max commanded roll [rad]
 AP.theta_c_max = 30 * pi/180;   % max commanded pitch [rad]
 
 e_phi_max   = 20 * pi/180;      % max roll  tracking error for gain design
@@ -56,35 +54,45 @@ end
 %   Plant (chi/phi): g/Va/s
 %   omega_n_chi = omega_n_phi/10  (bandwidth separation)
 % -----------------------------------------------------------------------
-zeta_chi    = 1.0;
-omega_n_chi = omega_n_phi / 10.0;
+% zeta_chi    = 1.0;
+% omega_n_chi = omega_n_phi / 10.0;
+% 
+% AP.course_kp = 2 * zeta_chi * omega_n_chi * Va_trim / AP.gravity;
+% AP.course_ki = omega_n_chi^2 * Va_trim / AP.gravity;
+% 
 
-AP.course_kp = 2 * zeta_chi * omega_n_chi * Va_trim / AP.gravity;
-AP.course_ki = omega_n_chi^2 * Va_trim / AP.gravity;
+% Manually put as textbook values were too strong for our case.
+AP.course_kp = 0.5;
+AP.course_ki = 0.05;
+
+omega_n_chi_actual = sqrt(AP.course_ki * AP.gravity / Va_trim);
+zeta_chi_actual    = AP.course_kp * AP.gravity / (2 * omega_n_chi_actual * Va_trim);
 
 fprintf('\n=== Course Loop ===\n');
-fprintf('  omega_n_chi = %.4f rad/s\n', omega_n_chi);
-fprintf('  course_kp = %.4f\n', AP.course_kp);
-fprintf('  course_ki = %.4f\n', AP.course_ki);
+fprintf('  course_kp = %.4f (manually tuned)\n', AP.course_kp);
+fprintf('  course_ki = %.4f (manually tuned)\n', AP.course_ki);
+fprintf('  Implied omega_n_chi = %.4f rad/s\n', omega_n_chi_actual);
+fprintf('  Implied zeta_chi    = %.4f\n', zeta_chi_actual);
 
-% -----------------------------------------------------------------------
-% SIDESLIP LOOP
-% -----------------------------------------------------------------------
-zeta_beta    = 0.707;
-omega_n_beta = 0.1;
 
-AP.sideslip_kp = (2*zeta_beta*omega_n_beta - a_beta1) / a_beta2;
-AP.sideslip_ki = omega_n_beta^2 / a_beta2;
-
-fprintf('\n=== Sideslip Loop ===\n');
-fprintf('  sideslip_kp = %.4f\n', AP.sideslip_kp);
-fprintf('  sideslip_ki = %.4f\n', AP.sideslip_ki);
+% % -----------------------------------------------------------------------
+% % SIDESLIP LOOP
+% % -----------------------------------------------------------------------
+% zeta_beta    = 0.707;
+% omega_n_beta = 0.1;
+% 
+% AP.sideslip_kp = (2*zeta_beta*omega_n_beta - a_beta1) / a_beta2;
+% AP.sideslip_ki = omega_n_beta^2 / a_beta2;
+% 
+% fprintf('\n=== Sideslip Loop ===\n');
+% fprintf('  sideslip_kp = %.4f\n', AP.sideslip_kp);
+% fprintf('  sideslip_ki = %.4f\n', AP.sideslip_ki);
 
 % -----------------------------------------------------------------------
 % YAW DAMPER
 % -----------------------------------------------------------------------
-AP.yaw_damper_tau_r = 0.5;
-AP.yaw_damper_kp    = 2;
+AP.yaw_damper_tau_r = 5;
+AP.yaw_damper_kp    = -0.5;
 
 fprintf('\n=== Yaw Damper ===\n');
 fprintf('  tau_r = %.4f\n', AP.yaw_damper_tau_r);
@@ -143,7 +151,7 @@ fprintf('  airspeed_throttle_kp = %.4f\n', AP.airspeed_throttle_kp);
 fprintf('  airspeed_throttle_ki = %.4f\n', AP.airspeed_throttle_ki);
 
 % -----------------------------------------------------------------------
-% AIRSPEED WITH PITCH  (NEW - required by project Section 5)
+% AIRSPEED WITH PITCH
 %   Plant: Va/theta_c = T_Va_theta = -a_V3/(s + a_V1)
 %   Note: plant has NEGATIVE sign (pitching up slows the aircraft).
 %   So kp and ki are negative, which pitches down when Va is too low.
@@ -200,7 +208,7 @@ fprintf('\nSaved autopilot_gains.mat\n');
 fprintf('\n=== Bandwidth Summary ===\n');
 fprintf('  omega_n_phi   = %.4f rad/s  (roll — fastest)\n',   omega_n_phi);
 fprintf('  omega_n_theta = %.4f rad/s  (pitch)\n',             omega_n_theta);
-fprintf('  omega_n_chi   = %.4f rad/s  (course  = phi/10)\n',  omega_n_chi);
+fprintf('  omega_n_chi   = %.4f rad/s  (course  = phi/10)\n',  omega_n_chi_actual);
 fprintf('  omega_n_Vt    = %.4f rad/s  (airspeed/throttle)\n', omega_n_Vt);
 fprintf('  omega_n_h     = %.4f rad/s  (altitude = theta/10)\n', omega_n_h);
 
