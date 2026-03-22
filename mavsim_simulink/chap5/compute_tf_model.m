@@ -1,12 +1,8 @@
 % compute_tf_model.m
 %   Derives transfer function models from linearised state-space.
 %
-%   Key fix: a_theta2 is NOT A_lon(3,4) (which is zero because Cm has no
-%   direct theta dependence). Instead, a_theta2 comes from the short-period
-%   approximation (B&M Eq. 5.22):
-%       a_theta2 = -M_alpha/Jy = -M_w * Va_trim = -A_lon(3,2) * Va_trim
-%   This captures gravity's indirect effect through the alpha-theta
-%   relationship at trim.
+%   a_theta2 comes from the short-period approximation (B&M Eq. 5.22):
+%   a_theta2 = -M_alpha/Jy = -M_w * Va_trim = -A_lon(3,2) * Va_trim
 
 addpath('../parameters')
 addpath('../tools')

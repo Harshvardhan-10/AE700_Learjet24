@@ -1,7 +1,6 @@
 % compute_ss_model.m
 %   Linearises mavsim_trim about the trim condition.
 %   With Euler-based mav_dynamics (12 states), linmod returns A as 12x12
-%   directly — no quaternion-to-Euler transformation needed.
 %
 %   State ordering from mdlOutputs (= state ordering):
 %     1=pn  2=pe  3=pd  4=u  5=v  6=w
