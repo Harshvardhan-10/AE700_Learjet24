@@ -2,10 +2,8 @@ function drawAircraft(uu)
 % drawAircraft.m
 %   Draws a 3-D aircraft body that follows the MAV position and attitude.
 %   Fixes vs original:
-%     - Dynamic axis that follows the aircraft (no more fixed [-10,10] box)
+%     - Dynamic axis that follows the aircraft
 %     - Proper aircraft shape (fuselage + wings + tail) instead of box
-%     - EraseMode removed (deprecated since MATLAB R2014b)
-%     - Stale-handle guard so re-running doesn't crash
 
     % ----------------------------------------------------------------
     % Unpack inputs
@@ -127,9 +125,8 @@ end
 function [V, F, colors] = defineAircraftBody()
 
     % ---- Scale (approximate Learjet 24 proportions) ----
-    %  Real span ~10.8 m, length ~14.5 m  → use ~1/14 scale for clarity
-    %  but keep proportions realistic
-    sc = 14;   % scale factor — increase to make aircraft larger on screen
+    %  Real span ~10.8 m, length ~14.5 m  → use ~1/10 scale
+    sc = 10;   % scale factor — increase to make aircraft larger on screen
 
     fuse_l1    =  7 / sc;    % nose tip to widest point
     fuse_l2    =  4 / sc;    % widest-point to wing LE (body width section)
@@ -182,7 +179,6 @@ function [V, F, colors] = defineAircraftBody()
     blue    = [0.2, 0.4, 0.8];
     red     = [0.9, 0.1, 0.1];
     green   = [0.1, 0.7, 0.2];
-    white   = [0.9, 0.9, 0.9];
 
     colors = [...
         yellow;...   % nose top
