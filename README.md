@@ -139,6 +139,9 @@ cd chap5
 compute_trim.m          % requires mavsim_trim.slx open or on path
                         % saves: trim_results.mat, trim_results_turn.mat
 
+trim_verification.m     % requires mavsim_chap5.slx on path, it is a veification script for trim condition MAV states
+                        % saves: trim_verification.png, turn_trim_verification.png
+
 compute_ss_model.m      % requires mavsim_trim.slx
                         % saves: ss_models.mat
 
@@ -148,6 +151,8 @@ compute_tf_model.m      % saves: transfer_function_coef.mat
 **What each produces:**
 - `trim_results.mat` — trim state and controls at Va=80 m/s, γ=0 (alpha ≈ 5.5°)
 - `trim_results_turn.mat` — coordinated turn trim at n=1.2 (phi ≈ 33.9°, CL ≈ 0.83)
+- `trim_verification.png` — MAV states at straight wing level fight trim condition
+- `turn_trim_verification.png` — MAV states at coordinated constant altitude turn with load factor n = 1.2 trim condition
 - `ss_models.mat` — lateral A,B and longitudinal A,B matrices
 - `transfer_function_coef.mat` — a_phi1/2, a_theta1/2/3, a_V1/2/3, etc.
 
@@ -189,15 +194,9 @@ Set wind to zero by setting `WIND.sigma_u = WIND.sigma_v = WIND.sigma_w = 0` in 
 % From project root:
 addpath('parameters'); addpath('tools')
 
-cd chap3;  verify_EOM;           cd ..
-cd chap3;  verify_Jxz_coupling;  cd ..
-cd chap4;  fm_verification;      cd ..
-cd chap5;  compute_trim;         cd ..
-cd chap5;  compute_ss_model;     cd ..
-cd chap5;  compute_tf_model;     cd ..
-cd chap6;  compute_autopilot_gains;  cd ..
-cd chap6;  run_autopilot_sim;        cd ..
-cd chap6;  generate_report_plots;    cd ..
+cd chap3;  verify_EOM; verify_Jxz_coupling;  cd ..
+cd chap4;  fm_verification;  compute_trim;  trim_verification;  compute_ss_model;  compute_tf_model; cd ..
+cd chap6;  compute_autopilot_gains; run_autopilot_sim;  generate_report_plots;  cd ..
 ```
 
 ---
